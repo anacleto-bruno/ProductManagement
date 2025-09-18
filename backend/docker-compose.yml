@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  postgresql:
+    image: postgres:16-alpine
+    container_name: productmanagement-postgres
+    environment:
+      POSTGRES_DB: productmanagement
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - productmanagement-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: productmanagement-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - productmanagement-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  productmanagement-api:
+    build:
+      context: .
+      dockerfile: ProductManagement/Dockerfile
+    container_name: productmanagement-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Docker
+      - AzureWebJobsStorage=UseDevelopmentStorage=true
+      - FUNCTIONS_WORKER_RUNTIME=dotnet-isolated
+      - ConnectionStrings__DefaultConnection=Host=postgresql;Database=productmanagement;Username=postgres;Password=postgres123
+      - ConnectionStrings__RedisConnection=redis:6379
+    ports:
+      - "7071:80"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - productmanagement-network
+    volumes:
+      - ./ProductManagement:/app
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  productmanagement-network:
+    driver: bridge

@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet:*)",
+      "Bash(docker-compose:*)",
+      "Bash(dotnet new:*)",
+      "Bash(rm:*)",
+      "Bash(dotnet sln add:*)",
+      "Bash(mkdir:*)",
+      "Bash(dotnet add:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(func start:*)",
+      "Bash(curl:*)",
+      "Bash(docker:*)",
+      "Bash(git checkout:*)",
+      "Bash(git init:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,842 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Backend Infrastructure with Docker and PostgreSQL",
+        "description": "Initialize .NET Core Azure Functions project with PostgreSQL database using Docker containers and establish Clean Architecture foundation",
+        "details": "Create project structure following Clean Architecture patterns with Functions/, Services/, Infrastructure/, Entities/, Dtos/, Models/, Helpers/, Constants/, and Enumerations/ folders. Setup docker-compose.yml with PostgreSQL and .NET Core services. Configure connection strings and environment variables. Initialize Entity Framework Core with PostgreSQL provider. Create base repository pattern and dependency injection configuration.",
+        "testStrategy": "Verify Docker containers start successfully with 'docker-compose up'. Test database connectivity and basic Entity Framework operations. Validate project structure follows Clean Architecture principles.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "completed",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Clean Architecture Project Structure",
+            "description": "Initialize .NET Core Azure Functions project and create folder structure following Clean Architecture patterns",
+            "dependencies": [],
+            "details": "Create new Azure Functions project with .NET Core. Establish folder hierarchy: Functions/ (API endpoints), Services/ (business logic), Infrastructure/ (data access), Entities/ (domain models), Dtos/ (data transfer objects), Models/ (view models), Helpers/ (utility classes), Constants/ (application constants), and Enumerations/ (enum definitions). Configure project references and namespace organization.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: .NET 8.0 Azure Functions project created with Clean Architecture structure. All folders created and project builds successfully."
+          },
+          {
+            "id": 2,
+            "title": "Configure Docker Compose with PostgreSQL",
+            "description": "Setup docker-compose.yml with PostgreSQL database and .NET Core application services",
+            "dependencies": [
+              "1.1"
+            ],
+            "details": "Create docker-compose.yml file defining PostgreSQL service with persistent volume, environment variables for database credentials, and .NET Core application service. Configure networking between containers, expose appropriate ports (5432 for PostgreSQL, 7071 for Functions), and setup health checks. Include Dockerfile for the .NET application with multi-stage build.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: Docker containers running successfully. PostgreSQL (port 5432) and Redis (port 6379) both healthy. Network and volumes created."
+          },
+          {
+            "id": 3,
+            "title": "Setup Environment Configuration",
+            "description": "Configure connection strings, environment variables, and application settings",
+            "dependencies": [
+              "1.2"
+            ],
+            "details": "Create appsettings.json and appsettings.Development.json with PostgreSQL connection strings. Setup environment variables for Docker containers including database credentials, connection timeouts, and application-specific settings. Configure Azure Functions host.json for local development. Implement configuration validation and error handling.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: All configuration files created (appsettings.json, appsettings.Development.json, appsettings.Docker.json, host.json, local.settings.json). Configuration models implemented and binding working."
+          },
+          {
+            "id": 4,
+            "title": "Initialize Entity Framework Core with PostgreSQL",
+            "description": "Setup Entity Framework Core with PostgreSQL provider and configure DbContext",
+            "dependencies": [
+              "1.3"
+            ],
+            "details": "Install Npgsql.EntityFrameworkCore.PostgreSQL package. Create ApplicationDbContext inheriting from DbContext. Configure PostgreSQL connection in DbContext options. Setup Entity Framework tools for migrations. Create initial migration structure and configure database naming conventions for PostgreSQL compatibility.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: ProductManagementContext created with PostgreSQL provider. Initial migration generated and applied. Database schema created with 6 tables (products, colors, sizes, productcolors, productsizes, __EFMigrationsHistory)."
+          },
+          {
+            "id": 5,
+            "title": "Implement Repository Pattern and Base Infrastructure",
+            "description": "Create base repository pattern, interfaces, and common infrastructure components",
+            "dependencies": [
+              "1.4"
+            ],
+            "details": "Implement IRepository<T> interface and BaseRepository<T> class with common CRUD operations. Create IUnitOfWork pattern for transaction management. Setup base entity classes with common properties (Id, CreatedAt, UpdatedAt). Implement generic repository methods for querying, filtering, and pagination support.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: IRepository<T>, Repository<T>, IUnitOfWork, and UnitOfWork implemented. BaseEntity with audit fields created. Result<T> and PagedResult<T> helper classes implemented."
+          },
+          {
+            "id": 6,
+            "title": "Configure Dependency Injection Container",
+            "description": "Setup dependency injection configuration for services, repositories, and infrastructure components",
+            "dependencies": [
+              "1.5"
+            ],
+            "details": "Configure Azure Functions dependency injection in Startup.cs. Register DbContext with PostgreSQL connection string. Register repository interfaces with their implementations using appropriate lifetimes (Scoped for DbContext, Transient for repositories). Setup service layer registrations and configure logging providers. Implement health check endpoints for database connectivity.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: DI configured in Program.cs. DbContext registered with PostgreSQL. Repository pattern registered. Health checks implemented and responding at /api/health endpoint. Database connectivity verified."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Design and Implement PostgreSQL Database Schema",
+        "description": "Create normalized relational schema for Products, Colors, and Sizes with proper relationships and ActiveRecord migrations",
+        "details": "Design entities: Product (id, name, description, brand, sku, price, category, created_at, updated_at), Color (id, name, hex_code), Size (id, name, value). Implement many-to-many relationships via ProductColors and ProductSizes junction tables. Create Entity Framework migrations with proper indexes on searchable fields (name, description, brand, sku, category). Generate database ERD documentation.",
+        "testStrategy": "Run migrations successfully against PostgreSQL. Verify all tables created with correct relationships and constraints. Test foreign key constraints and cascade operations. Validate indexes are created on search fields.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "completed",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Entity Models and Relationships",
+            "description": "Define the core entity models (Product, Color, Size) with their properties and establish many-to-many relationships through junction tables (ProductColors, ProductSizes)",
+            "dependencies": [],
+            "details": "Create Product entity with id, name, description, brand, sku, price, category, created_at, updated_at fields. Design Color entity with id, name, hex_code. Design Size entity with id, name, value. Define ProductColors and ProductSizes junction tables for many-to-many relationships. Establish proper foreign key constraints and cascade behaviors.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: All entity models created with proper properties and relationships. Many-to-many relationships established through junction tables with cascade delete."
+          },
+          {
+            "id": 2,
+            "title": "Create Entity Framework Migration Files",
+            "description": "Generate and configure Entity Framework migrations for all entities and relationships with proper data types and constraints",
+            "dependencies": [
+              "2.1"
+            ],
+            "details": "Create initial migration for Product, Color, Size entities. Generate migration for ProductColors and ProductSizes junction tables. Configure proper data types, nullable constraints, and default values. Set up foreign key relationships with appropriate cascade options. Validate migration scripts for PostgreSQL compatibility.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: Two migrations created successfully (InitialCreate, AddPerformanceIndexes). All entities and relationships properly migrated to PostgreSQL."
+          },
+          {
+            "id": 3,
+            "title": "Implement Database Indexes for Performance",
+            "description": "Create strategic indexes on searchable and frequently queried fields to optimize database performance",
+            "dependencies": [
+              "2.2"
+            ],
+            "details": "Add indexes on Product fields: name, description, brand, sku, category for search optimization. Create composite indexes for common query patterns. Add unique constraints where appropriate (e.g., SKU). Implement partial indexes for soft-deleted records. Generate migration for index creation.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: 17 indexes created including single-column, composite, and unique indexes. Performance optimization indexes for search queries implemented."
+          },
+          {
+            "id": 4,
+            "title": "Execute Migrations and Validate Schema",
+            "description": "Run all migrations against PostgreSQL database and verify schema integrity and relationships",
+            "dependencies": [
+              "2.3"
+            ],
+            "details": "Execute migrations in development environment. Verify all tables are created with correct structure. Test foreign key constraints and cascade operations. Validate data types and nullable constraints. Confirm indexes are properly created and functional. Test rollback scenarios for migration safety.",
+            "status": "completed",
+            "testStrategy": "✅ Verified: All migrations executed successfully. 6 tables created with proper structure. 4 foreign key constraints validated. 17 indexes confirmed functional."
+          },
+          {
+            "id": 5,
+            "title": "Generate Database ERD Documentation",
+            "description": "Create comprehensive Entity Relationship Diagram and database documentation for the schema",
+            "dependencies": [
+              "2.4"
+            ],
+            "details": "Generate ERD showing all entities, relationships, and cardinalities. Document table structures with field descriptions and constraints. Create data dictionary with field definitions and business rules. Include relationship documentation explaining junction table usage. Export documentation in multiple formats (PDF, PNG, markdown).",
+            "status": "completed",
+            "testStrategy": "✅ Verified: Comprehensive database schema documentation created with Mermaid ERD, complete table definitions, relationship documentation, and performance optimization details."
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Implement Database Seeding with Mock Data",
+        "description": "Create database seeding functionality to populate Products, Colors, and Sizes tables with meaningful test data",
+        "details": "Create seed data service that generates 1000+ realistic product records with varied names, descriptions, brands, SKUs, categories, and prices. Include diverse color palette (50+ colors with hex codes) and standard size ranges (XS-XXL, numeric sizes). Implement POST /products/seed endpoint with numRows parameter (default 100, min 1, max 10000). Use libraries like Bogus for generating realistic mock data.",
+        "testStrategy": "Verify seeding creates specified number of records. Test parameter validation (1-10000 range). Confirm generated data is meaningful and diverse. Validate relationships between products, colors, and sizes are properly established.",
+        "priority": "medium",
+        "dependencies": [
+          2
+        ],
+        "status": "completed",
+        "completedAt": "2025-09-17T16:30:00Z",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Mock Data Generation Service",
+            "description": "Implement service class to generate realistic product, color, and size data using Bogus library",
+            "dependencies": [],
+            "details": "Create ProductSeedService with methods to generate realistic product names, descriptions, brands, SKUs, categories, and prices. Implement ColorSeedService to generate 50+ colors with proper hex codes and names. Create SizeSeedService for standard size ranges (XS-XXL, numeric sizes). Use Bogus library for data generation with proper localization and realistic patterns.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Seed API Endpoint",
+            "description": "Create POST /products/seed Azure Function endpoint with proper routing and response handling",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "Implement Azure Function HTTP trigger for POST /products/seed endpoint. Accept numRows parameter with default value 100. Return seeding summary including counts of created products, colors, and sizes. Implement proper HTTP status codes and JSON response format. Add endpoint to Swagger documentation.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add Parameter Validation and Error Handling",
+            "description": "Implement validation for numRows parameter and comprehensive error handling for seeding operations",
+            "dependencies": [
+              "3.2"
+            ],
+            "details": "Validate numRows parameter (min 1, max 10000) with proper error messages. Implement try-catch blocks for database operations with meaningful error responses. Add validation for database connection and table existence. Return appropriate HTTP status codes (400 for validation errors, 500 for server errors).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Establish Data Relationships and Database Integration",
+            "description": "Implement proper relationships between products, colors, and sizes with database persistence",
+            "dependencies": [
+              "3.3"
+            ],
+            "details": "Create many-to-many relationships between products and colors/sizes using Entity Framework. Implement bulk insert operations for performance with large datasets. Ensure referential integrity and proper foreign key constraints. Add database transaction handling to ensure data consistency during seeding operations.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Implement Core CRUD API Endpoints",
+        "description": "Create RESTful API endpoints for basic product management operations with proper validation and error handling",
+        "details": "Implement Azure Functions for: POST /products (create with validation), GET /products/{id} (retrieve by ID), PUT /products/{id} (update with validation), DELETE /products/{id} (soft delete). Use DTOs for request/response mapping. Implement proper HTTP status codes (201, 200, 404, 422, 500). Add model validation using FluentValidation. Include Swagger/OpenAPI documentation generation.",
+        "testStrategy": "Unit tests for each endpoint covering success and error scenarios. Integration tests with actual database operations. Validate proper HTTP status codes and response formats. Test input validation and error messages.",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Create Product Endpoint",
+            "description": "Create POST /products Azure Function with validation and proper HTTP status codes",
+            "dependencies": [],
+            "details": "Implement Azure Function for POST /products endpoint. Accept product creation data, validate using FluentValidation, map DTOs, and return 201 on success or 422 on validation errors. Include proper error handling with 500 status for server errors.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Read Product Endpoint",
+            "description": "Create GET /products/{id} Azure Function for retrieving individual products",
+            "dependencies": [],
+            "details": "Implement Azure Function for GET /products/{id} endpoint. Retrieve product by ID, map to response DTO, return 200 on success or 404 when product not found. Include proper error handling and response formatting.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement Update and Delete Endpoints",
+            "description": "Create PUT /products/{id} and DELETE /products/{id} Azure Functions",
+            "dependencies": [],
+            "details": "Implement PUT /products/{id} for updates with validation and DELETE /products/{id} for soft delete operations. Return appropriate HTTP status codes (200, 404, 422) and handle validation errors. Implement soft delete logic for data integrity.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement DTO Mapping and FluentValidation",
+            "description": "Create DTOs and validation rules for all CRUD operations",
+            "dependencies": [
+              "4.1",
+              "4.2",
+              "4.3"
+            ],
+            "details": "Create request/response DTOs for all endpoints. Implement FluentValidation rules for product creation and update operations. Include validation for required fields, data types, string lengths, and business rules. Set up proper validation error message formatting.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Add API Documentation and Error Handling",
+            "description": "Implement Swagger/OpenAPI documentation and comprehensive error handling",
+            "dependencies": [
+              "4.1",
+              "4.2",
+              "4.3",
+              "4.4"
+            ],
+            "details": "Generate Swagger/OpenAPI documentation for all CRUD endpoints. Implement global error handling middleware for consistent error responses. Document all HTTP status codes, request/response schemas, and validation rules. Add proper logging for debugging and monitoring.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Implement Product List with Pagination",
+        "description": "Create paginated product listing endpoint with metadata for efficient data retrieval",
+        "details": "Implement GET /products endpoint with query parameters: page (default 1), per_page (default 20, max 100). Return paginated results with metadata: total_count, current_page, total_pages, has_next_page, has_previous_page. Use Entity Framework Skip/Take for efficient pagination. Add database indexes on commonly sorted fields. Include sorting options by name, price, created_at.",
+        "testStrategy": "Test pagination with large datasets (1000+ records). Verify metadata accuracy across different page sizes. Test edge cases (empty results, invalid page numbers). Performance test with concurrent requests.",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Query Parameter Handling and Validation",
+            "description": "Create parameter parsing and validation logic for pagination and sorting query parameters",
+            "dependencies": [],
+            "details": "Implement query parameter handling for page (default 1), per_page (default 20, max 100), and sorting options (name, price, created_at). Add validation to ensure page >= 1, per_page between 1-100, and valid sort field names. Create parameter binding models and validation attributes for clean controller input handling.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Core Pagination Logic with Entity Framework",
+            "description": "Build efficient pagination implementation using Entity Framework Skip/Take operations",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement pagination logic using Entity Framework Skip/Take methods for efficient database queries. Calculate skip value based on page and per_page parameters. Ensure proper query optimization to avoid loading unnecessary data. Handle edge cases like requesting pages beyond available data.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Calculate and Return Pagination Metadata",
+            "description": "Implement metadata calculation and response formatting for pagination information",
+            "dependencies": [
+              "5.2"
+            ],
+            "details": "Calculate pagination metadata including total_count, current_page, total_pages, has_next_page, and has_previous_page. Implement efficient total count queries that work with filtered/sorted data. Create response DTOs that include both paginated data and metadata in a structured format.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Sorting Functionality and Database Optimization",
+            "description": "Add sorting capabilities and optimize database performance with proper indexing",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement dynamic sorting by name, price, and created_at fields with ascending/descending options. Create database indexes on commonly sorted fields for optimal query performance. Add proper query building logic to combine sorting with pagination efficiently. Ensure sort parameter validation and default sorting behavior.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Implement Dynamic Search and Filtering",
+        "description": "Create comprehensive search functionality across multiple product fields with caching optimization",
+        "details": "Implement GET /products/search endpoint with query parameter 'q'. Search across name, description, category, brand, SKU using Entity Framework Contains/StartsWith. Add Redis caching for frequent searches with 5-minute TTL. Implement full-text search using PostgreSQL's built-in capabilities. Include search result highlighting and relevance scoring. Apply pagination to search results.",
+        "testStrategy": "Test search across all specified fields with partial matches. Verify response time <200ms for 1000+ records. Test cache hit/miss scenarios. Validate search result relevance and pagination integration.",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Basic Search Endpoint",
+            "description": "Create GET /products/search endpoint with query parameter support and Entity Framework search implementation",
+            "dependencies": [],
+            "details": "Implement Azure Function for GET /products/search endpoint with 'q' query parameter. Use Entity Framework Contains/StartsWith methods to search across name, description, category, brand, and SKU fields. Add proper input validation and sanitization. Include basic error handling and HTTP status codes. Return search results in consistent JSON format matching existing product endpoints.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Integrate PostgreSQL Full-Text Search",
+            "description": "Implement PostgreSQL's built-in full-text search capabilities for enhanced search performance and accuracy",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "Configure PostgreSQL full-text search indexes on product text fields. Implement search queries using PostgreSQL's to_tsvector and to_tsquery functions. Create database migration scripts for search indexes. Integrate full-text search with Entity Framework using raw SQL queries. Add support for search operators and phrase matching. Optimize search performance with proper indexing strategies.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Setup Redis Caching for Search Results",
+            "description": "Implement Redis caching layer for frequent search queries with TTL management",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "Configure Redis connection and caching service. Implement cache key generation based on search parameters. Add cache-aside pattern for search results with 5-minute TTL. Include cache invalidation strategies for product updates. Implement cache hit/miss logging and monitoring. Add fallback mechanisms when Redis is unavailable. Configure cache serialization for complex search result objects.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Search Result Highlighting",
+            "description": "Add search term highlighting functionality to improve user experience and result visibility",
+            "dependencies": [
+              "6.2"
+            ],
+            "details": "Implement search term highlighting algorithm for matched text in product fields. Create highlighting service that marks search terms in name, description, and other text fields. Add HTML-safe highlighting with configurable highlight tags. Support multiple search terms and phrase highlighting. Implement highlighting for both basic and full-text search results. Add configuration options for highlight styling and maximum highlighted snippets.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement Relevance Scoring Algorithm",
+            "description": "Create relevance scoring system to rank search results by importance and match quality",
+            "dependencies": [
+              "6.2",
+              "6.4"
+            ],
+            "details": "Design relevance scoring algorithm considering field importance weights (name > brand > description). Implement scoring based on match position, exact matches, and partial matches. Add boost factors for popular products and recent items. Create configurable scoring parameters for different search scenarios. Integrate scoring with PostgreSQL full-text search ranking. Add A/B testing framework for scoring algorithm improvements.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Integrate Search with Pagination System",
+            "description": "Combine search functionality with existing pagination system for efficient result navigation",
+            "dependencies": [
+              "6.3",
+              "6.5"
+            ],
+            "details": "Integrate search endpoint with pagination parameters (page, per_page). Implement efficient pagination for search results with proper count queries. Add search metadata including total results, current page, and pagination links. Optimize pagination performance for large search result sets. Include search parameters in pagination metadata. Add cursor-based pagination option for very large result sets. Ensure cache compatibility with paginated search results.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Setup React Frontend with Modern Architecture",
+        "description": "Initialize React 18.2 + TypeScript SPA with Vite, shadcn UI, and optimized state management",
+        "details": "Create React project with Vite build system. Setup TypeScript 5.5 in strict mode. Install and configure: shadcn for UI components, Zustand for client state, React Query (@tanstack/react-query) for server state, React Router v7, react-i18next for internationalization, Zod for validation. Implement provider pattern for cross-cutting concerns. Setup environment configuration for API base URL.",
+        "testStrategy": "Verify project builds and runs successfully. Test TypeScript compilation in strict mode. Validate all dependencies are properly configured. Test environment variable loading and API configuration.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize React Project with Vite and TypeScript",
+            "description": "Create new React 18.2 project using Vite build system and configure TypeScript 5.5 in strict mode",
+            "dependencies": [],
+            "details": "Run 'npm create vite@latest frontend -- --template react-ts' to create project. Configure TypeScript 5.5 with strict mode enabled in tsconfig.json. Setup proper compiler options including strict null checks, no implicit any, and exact optional property types. Configure Vite for development and production builds with proper TypeScript integration.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Setup shadcn UI Component Library",
+            "description": "Install and configure shadcn/ui for modern React components with proper theming",
+            "dependencies": [
+              "7.1"
+            ],
+            "details": "Install shadcn/ui CLI and initialize components library. Configure Tailwind CSS integration for styling. Setup theme configuration with CSS variables for light/dark mode support. Install essential UI components (Button, Input, Card, Dialog, etc.) and configure component registry. Setup proper import paths and component organization.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Configure State Management with Zustand and React Query",
+            "description": "Setup client-side state management with Zustand and server state management with React Query",
+            "dependencies": [
+              "7.1"
+            ],
+            "details": "Install and configure Zustand for client state management with TypeScript support. Setup React Query (@tanstack/react-query) for server state with proper query client configuration. Create store structure for global application state. Configure React Query DevTools for development. Setup proper error boundaries and loading states management.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Setup Routing and Internationalization",
+            "description": "Configure React Router v7 for navigation and react-i18next for multi-language support",
+            "dependencies": [
+              "7.1"
+            ],
+            "details": "Install and configure React Router v7 with TypeScript route definitions. Setup route structure for main application pages. Install react-i18next for internationalization support. Configure language detection, resource loading, and translation namespaces. Setup route-based code splitting for optimal bundle sizes.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Configure Environment Variables and Provider Pattern",
+            "description": "Setup environment configuration, validation with Zod, and implement provider pattern for cross-cutting concerns",
+            "dependencies": [
+              "7.2",
+              "7.3",
+              "7.4"
+            ],
+            "details": "Install Zod for runtime validation and schema definition. Create environment variable configuration with proper typing and validation. Setup API base URL configuration for different environments. Implement provider pattern wrapping React Query, theme, and i18n providers. Create proper error boundaries and global error handling. Configure development vs production environment settings.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Implement Product List UI with Pagination",
+        "description": "Create responsive product listing interface with shadcn components and pagination controls",
+        "details": "Build product list component using shadcn Table component. Implement React Query hooks for data fetching from GET /products endpoint. Create pagination controls with page navigation, items per page selector. Add loading states with skeleton components and error boundaries. Implement responsive design for mobile/desktop. Use Zustand for pagination state management.",
+        "testStrategy": "Test initial data loading and pagination navigation. Verify loading and error states display correctly. Test responsive behavior across different screen sizes. Validate pagination state persistence during navigation.",
+        "priority": "medium",
+        "dependencies": [
+          7,
+          5
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Product List Component with shadcn Table",
+            "description": "Build the main product listing component using shadcn Table component with proper data display and structure",
+            "dependencies": [],
+            "details": "Implement ProductList component using shadcn Table component. Create table columns for product name, price, category, brand, and actions. Set up React Query hooks for data fetching from GET /products endpoint. Implement proper data mapping and display formatting. Add table sorting capabilities and empty state handling.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Pagination Controls with Zustand State Management",
+            "description": "Create pagination navigation controls with page selection and items per page functionality",
+            "dependencies": [
+              "8.1"
+            ],
+            "details": "Build pagination controls component with previous/next buttons, page number navigation, and items per page selector. Implement Zustand store for pagination state management (current page, items per page, total items). Create pagination metadata display showing current range and total items. Handle pagination state persistence and URL synchronization.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add Loading States and Error Boundaries",
+            "description": "Implement comprehensive loading states with skeleton components and error handling",
+            "dependencies": [
+              "8.1"
+            ],
+            "details": "Create skeleton loading components for table rows during data fetching. Implement error boundary component for graceful error handling. Add loading spinners for pagination navigation. Create error state displays with retry functionality. Implement proper loading state management with React Query loading states.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Responsive Design for Mobile and Desktop",
+            "description": "Create responsive layout adaptations for different screen sizes and devices",
+            "dependencies": [
+              "8.1",
+              "8.2",
+              "8.3"
+            ],
+            "details": "Implement responsive table design with horizontal scrolling on mobile. Create mobile-optimized card layout as alternative to table view. Add responsive pagination controls with condensed mobile navigation. Implement breakpoint-based component switching. Test and optimize layout for tablet, mobile, and desktop viewports.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Implement Search UI with Real-time Integration",
+        "description": "Create responsive search interface with debounced API calls and dynamic result updates",
+        "details": "Build search input component with debounced API calls (300ms delay). Integrate with /products/search endpoint using React Query. Implement search result highlighting and 'no results found' state. Add search history using localStorage. Create advanced search filters for category, brand, price range. Use Zod schemas for search parameter validation.",
+        "testStrategy": "Test debounced search functionality with rapid typing. Verify search results update dynamically. Test 'no results' and error states. Validate search parameter validation and URL state synchronization.",
+        "priority": "medium",
+        "dependencies": [
+          8,
+          6
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Debounced Search Input Component",
+            "description": "Build reusable search input component with 300ms debouncing logic and proper state management",
+            "dependencies": [],
+            "details": "Create SearchInput component using React hooks (useState, useEffect, useCallback). Implement debouncing with 300ms delay to prevent excessive API calls. Add loading states and clear functionality. Include proper TypeScript types and accessibility features (ARIA labels, keyboard navigation). Style with Tailwind CSS for responsive design.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Integrate Search API with React Query",
+            "description": "Set up React Query integration for /products/search endpoint with proper caching and error handling",
+            "dependencies": [
+              "9.1"
+            ],
+            "details": "Create useSearchProducts custom hook using React Query. Configure query key structure for proper caching. Implement error handling for network failures and API errors. Set up query invalidation strategies. Add loading and error states management. Configure stale time and cache time for optimal performance.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Build Search Results Display Component",
+            "description": "Create dynamic search results component with highlighting and empty states",
+            "dependencies": [
+              "9.2"
+            ],
+            "details": "Build SearchResults component to display product search results. Implement search term highlighting in product names and descriptions. Create 'no results found' state with helpful messaging. Add result count display and loading skeletons. Include proper grid/list layout with responsive design. Handle result updates smoothly without flickering.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Search History with localStorage",
+            "description": "Add search history functionality using localStorage with proper data management",
+            "dependencies": [
+              "9.1"
+            ],
+            "details": "Create useSearchHistory custom hook for localStorage integration. Implement search term storage with timestamp and frequency tracking. Add search history dropdown with recent searches display. Include clear history functionality and search term suggestions. Limit history to last 10 searches with proper data cleanup. Handle localStorage errors gracefully.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Create Advanced Search Filters",
+            "description": "Build comprehensive filtering system with category, brand, and price range filters using Zod validation",
+            "dependencies": [
+              "9.2"
+            ],
+            "details": "Create AdvancedFilters component with category dropdown, brand multi-select, and price range slider. Implement Zod schemas for search parameter validation. Add filter state management and URL synchronization. Create filter chips for active filters with remove functionality. Include reset filters option and filter count indicators. Ensure filters work seamlessly with search query.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Implement CRUD Operations UI",
+        "description": "Create comprehensive product management forms with validation and user feedback",
+        "details": "Build Add/Edit Product modal forms using shadcn Dialog and Form components. Implement Zod validation schemas matching backend DTOs. Create delete confirmation dialog with proper UX patterns. Add toast notifications for success/error feedback. Implement optimistic updates with React Query mutations. Include form field validation with real-time feedback and proper error handling.",
+        "testStrategy": "Test form validation for all required fields. Verify CRUD operations update UI state correctly. Test error handling and user feedback mechanisms. Validate optimistic updates and rollback scenarios.",
+        "priority": "medium",
+        "dependencies": [
+          9,
+          4
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Add/Edit Product Modal Forms",
+            "description": "Build reusable modal forms using shadcn Dialog and Form components for adding and editing products",
+            "dependencies": [],
+            "details": "Implement ProductFormModal component using shadcn Dialog. Create shared form fields for product properties (name, description, price, category, brand, SKU). Build separate modes for Add and Edit operations with conditional rendering. Include proper form state management and field initialization for edit mode.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Zod Validation Schemas",
+            "description": "Create comprehensive validation schemas matching backend DTOs with real-time field validation",
+            "dependencies": [
+              "10.1"
+            ],
+            "details": "Define Zod schemas for product creation and update operations matching backend DTOs. Implement field-level validation rules (required fields, string lengths, number ranges, format validation). Add real-time validation feedback with error messages. Create validation helpers for form integration.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Build Delete Confirmation Dialog",
+            "description": "Create user-friendly delete confirmation dialog with proper UX patterns",
+            "dependencies": [],
+            "details": "Implement DeleteConfirmationDialog component using shadcn AlertDialog. Include product details in confirmation message. Add proper warning styling and destructive action patterns. Implement keyboard navigation and accessibility features. Include loading states during deletion process.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Implement Toast Notification System",
+            "description": "Add comprehensive user feedback system with toast notifications for all CRUD operations",
+            "dependencies": [],
+            "details": "Setup toast notification system using shadcn Toast components. Create notification helpers for success, error, and loading states. Implement contextual messages for each CRUD operation. Add proper timing and dismissal patterns. Include action buttons for undo operations where applicable.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement React Query Mutations with Optimistic Updates",
+            "description": "Create mutation hooks with optimistic updates for seamless user experience",
+            "dependencies": [
+              "10.2",
+              "10.4"
+            ],
+            "details": "Implement React Query mutations for create, update, and delete operations. Add optimistic updates to immediately reflect changes in UI. Create mutation hooks with proper error handling and rollback mechanisms. Implement cache invalidation strategies. Add loading states and mutation status tracking.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement Comprehensive Error Handling",
+            "description": "Create robust error handling system with user-friendly error messages and recovery options",
+            "dependencies": [
+              "10.2",
+              "10.4",
+              "10.5"
+            ],
+            "details": "Implement global error boundary for form components. Create error message mapping from backend validation errors. Add retry mechanisms for failed operations. Implement form field error display with proper styling. Create error recovery flows and user guidance for common error scenarios.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Implement Comprehensive Testing Suite",
+        "description": "Create robust automated testing for both backend and frontend with high coverage targets",
+        "details": "Backend: Setup xUnit testing framework with test database. Create unit tests for services, repositories, and Azure Functions. Implement integration tests for API endpoints. Use TestContainers for database testing. Frontend: Setup Jest + React Testing Library. Create component tests, custom hook tests, and integration tests. Mock API calls and test error scenarios. Target >90% backend coverage, >80% frontend coverage.",
+        "testStrategy": "Run full test suite with coverage reporting. Verify all critical paths are tested. Test CI/CD pipeline integration. Validate test database isolation and cleanup.",
+        "priority": "medium",
+        "dependencies": [
+          10
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Setup Backend Testing Infrastructure",
+            "description": "Configure xUnit testing framework, test database, and TestContainers for backend testing",
+            "dependencies": [],
+            "details": "Install xUnit, xUnit.runner.visualstudio, and Microsoft.AspNetCore.Mvc.Testing packages. Setup TestContainers for PostgreSQL with isolated test database instances. Configure test appsettings.json with test database connection strings. Create base test classes for integration and unit tests with proper setup/teardown methods.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement Backend Unit Tests",
+            "description": "Create comprehensive unit tests for services, repositories, and Azure Functions",
+            "dependencies": [
+              "11.1"
+            ],
+            "details": "Write unit tests for all service layer methods with mocked dependencies. Test repository patterns with in-memory database contexts. Create unit tests for Azure Functions with mocked HTTP contexts and dependencies. Test business logic, validation rules, and error handling scenarios. Target >90% code coverage for backend components.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement Backend Integration Tests",
+            "description": "Create integration tests for API endpoints using TestContainers and real database operations",
+            "dependencies": [
+              "11.1"
+            ],
+            "details": "Build integration tests for all CRUD endpoints using TestContainers PostgreSQL instances. Test complete request/response cycles including authentication, validation, and database operations. Verify proper HTTP status codes, response formats, and error handling. Test pagination, search, and filtering endpoints with realistic data sets.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Setup Frontend Testing Infrastructure",
+            "description": "Configure Jest, React Testing Library, and testing utilities for frontend components",
+            "dependencies": [],
+            "details": "Install and configure Jest, @testing-library/react, @testing-library/jest-dom, and @testing-library/user-event. Setup test environment configuration with jsdom. Create custom render utilities with providers (React Query, theme, etc.). Configure MSW (Mock Service Worker) for API mocking. Setup test utilities for common testing patterns.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement Frontend Component Tests",
+            "description": "Create unit tests for React components, custom hooks, and UI interactions",
+            "dependencies": [
+              "11.4"
+            ],
+            "details": "Write component tests for all major UI components including forms, modals, and data display components. Test custom hooks with renderHook utility. Mock API calls and test loading, success, and error states. Test user interactions, form validation, and component state changes. Target >80% frontend code coverage.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement Frontend Integration Tests",
+            "description": "Create end-to-end integration tests for complete user workflows and API integration",
+            "dependencies": [
+              "11.4"
+            ],
+            "details": "Build integration tests for complete user workflows like adding, editing, and deleting products. Test React Query integration with mocked API responses. Verify error handling, loading states, and optimistic updates. Test pagination, search, and filtering functionality with realistic user interactions.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Setup Coverage Reporting and CI/CD Integration",
+            "description": "Configure test coverage reporting and integrate testing suite into CI/CD pipeline",
+            "dependencies": [
+              "11.2",
+              "11.3",
+              "11.5",
+              "11.6"
+            ],
+            "details": "Configure coverage reporting tools (coverlet for backend, Jest coverage for frontend). Setup coverage thresholds and reporting formats (HTML, XML, JSON). Integrate test execution into GitHub Actions or Azure DevOps pipeline. Configure test result publishing and coverage badge generation. Setup automated test execution on pull requests with coverage validation.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Performance Optimization and Documentation",
+        "description": "Implement performance enhancements, caching strategies, and comprehensive developer documentation",
+        "details": "Add database indexes on search fields (name, description, brand, category). Implement Redis caching for frequent queries with appropriate TTL. Optimize JSON serialization and API response sizes. Create comprehensive README.md with setup instructions, Docker usage, and API documentation. Generate Swagger documentation. Add performance monitoring and logging. Create contribution guidelines and development workflow documentation.",
+        "testStrategy": "Performance benchmark search responses <200ms. Verify cache hit rates improve response times. Test documentation by having new developer follow setup instructions. Validate all Docker services start correctly with provided instructions.",
+        "priority": "low",
+        "dependencies": [
+          11
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Database Performance Tuning",
+            "description": "Add database indexes on search fields and optimize query performance",
+            "dependencies": [],
+            "details": "Create database indexes on product fields: name, description, brand, category, and SKU. Analyze existing query patterns and add composite indexes where beneficial. Optimize Entity Framework queries to reduce N+1 problems and unnecessary data loading. Test index effectiveness with query execution plans.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Redis Caching Implementation",
+            "description": "Implement Redis caching for frequent queries with appropriate TTL strategies",
+            "dependencies": [
+              "12.1"
+            ],
+            "details": "Set up Redis cache service and configure connection. Implement caching for product search queries, category listings, and frequently accessed products. Configure appropriate TTL values (5 minutes for searches, 1 hour for product details). Add cache invalidation strategies for data updates and implement cache warming for popular queries.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "API Response Optimization",
+            "description": "Optimize JSON serialization and API response sizes for better performance",
+            "dependencies": [
+              "12.2"
+            ],
+            "details": "Optimize JSON serialization settings to exclude null values and reduce payload size. Implement response compression (gzip). Add field selection capabilities to allow clients to request only needed data. Optimize DTO mappings and reduce unnecessary data transformations. Implement response caching headers for static data.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Comprehensive Documentation Creation",
+            "description": "Create detailed developer documentation including README, API docs, and contribution guidelines",
+            "dependencies": [],
+            "details": "Create comprehensive README.md with project overview, setup instructions, and Docker usage. Generate Swagger/OpenAPI documentation for all API endpoints. Write contribution guidelines including coding standards, PR process, and development workflow. Document environment setup, testing procedures, and deployment processes. Include troubleshooting guide and FAQ section.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Performance Monitoring and Logging Setup",
+            "description": "Implement performance monitoring, logging, and alerting systems",
+            "dependencies": [
+              "12.3"
+            ],
+            "details": "Set up structured logging with Serilog including request/response logging and performance metrics. Implement health check endpoints for all services. Add performance counters for API response times, cache hit rates, and database query performance. Configure monitoring dashboards and set up alerting for performance degradation. Include error tracking and performance profiling capabilities.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-09-18T03:27:16.733Z",
+      "updated": "2025-09-18T04:35:00.000Z",
+      "description": "Tasks for master context - Task 1 (Backend Infrastructure) and Task 2 (Database Schema) completed successfully"
+    }
+  }
+}

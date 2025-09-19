@@ -1,0 +1,22 @@
+{
+  "app": {
+    "title": "Product Management",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry"
+  },
+  "navigation": {
+    "home": "Home",
+    "products": "Products",
+    "search": "Search",
+    "settings": "Settings"
+  },
+  "buttons": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "search": "Search"
+  }
+}

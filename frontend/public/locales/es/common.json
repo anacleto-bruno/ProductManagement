@@ -1,0 +1,22 @@
+{
+  "app": {
+    "title": "Gestión de Productos",
+    "loading": "Cargando...",
+    "error": "Ha ocurrido un error",
+    "retry": "Reintentar"
+  },
+  "navigation": {
+    "home": "Inicio",
+    "products": "Productos",
+    "search": "Búsqueda",
+    "settings": "Configuración"
+  },
+  "buttons": {
+    "add": "Añadir",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "search": "Buscar"
+  }
+}

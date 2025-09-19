@@ -1,0 +1,25 @@
+{
+  "fields": {
+    "name": "Nombre",
+    "description": "Descripción",
+    "brand": "Marca",
+    "sku": "SKU",
+    "price": "Precio",
+    "category": "Categoría",
+    "colors": "Colores",
+    "sizes": "Tamaños"
+  },
+  "actions": {
+    "createProduct": "Crear Producto",
+    "updateProduct": "Actualizar Producto",
+    "deleteProduct": "Eliminar Producto",
+    "viewProduct": "Ver Producto",
+    "searchProducts": "Buscar Productos"
+  },
+  "messages": {
+    "productCreated": "Producto creado exitosamente",
+    "productUpdated": "Producto actualizado exitosamente",
+    "productDeleted": "Producto eliminado exitosamente",
+    "noProductsFound": "No se encontraron productos"
+  }
+}

@@ -92,4 +92,58 @@ public class ProductRepository : Repository<Product>, IProductRepository
 
         return await query.AnyAsync();
     }
+
+    public async Task<PagedResultDto<ProductResponseDto>> GetPagedProductsAsync(ProductListRequestDto request)
+    {
+        var query = _context.Products
+            .AsNoTracking()
+            .WhereSearch(request.Search!)
+            .WhereCategory(request.Category!)
+            .WhereBrand(request.Brand!)
+            .WherePriceRange(request.MinPrice, request.MaxPrice);
+
+        // Get total count for metadata
+        var totalCount = await query.CountAsync();
+
+        // Apply sorting and pagination
+        var pagedQuery = query
+            .OrderByField(request.SortBy!, request.Descending)
+            .Skip((request.Page - 1) * request.PerPage)
+            .Take(request.PerPage);
+
+        // Get the data with projection
+        var data = await pagedQuery
+            .Select(p => new ProductResponseDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Brand = p.Brand,
+                Sku = p.Sku,
+                Price = p.Price,
+                Category = p.Category,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt
+            })
+            .ToListAsync();
+
+        // Calculate pagination metadata
+        var totalPages = (int)Math.Ceiling(totalCount / (double)request.PerPage);
+
+        var pagination = new PaginationMetadataDto
+        {
+            CurrentPage = request.Page,
+            PerPage = request.PerPage,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            HasNextPage = request.Page < totalPages,
+            HasPreviousPage = request.Page > 1
+        };
+
+        return new PagedResultDto<ProductResponseDto>
+        {
+            Data = data,
+            Pagination = pagination
+        };
+    }
 }

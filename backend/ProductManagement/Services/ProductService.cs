@@ -101,4 +101,16 @@ public class ProductService : IProductService
         }
     }
 
+    public async Task<Result<PagedResultDto<ProductResponseDto>>> GetProductsAsync(ProductListRequestDto request)
+    {
+        try
+        {
+            var result = await _unitOfWork.Products.GetPagedProductsAsync(request);
+            return Result<PagedResultDto<ProductResponseDto>>.Success(result);
+        }
+        catch (Exception ex)
+        {
+            return Result<PagedResultDto<ProductResponseDto>>.Failure($"Failed to retrieve products: {ex.Message}");
+        }
+    }
 }

@@ -26,4 +26,6 @@ public interface IProductRepository : IRepository<Product>
         decimal? maxPrice = null);
 
     Task<bool> ExistsBySkuAsync(string sku, int? excludeId = null);
+
+    Task<PagedResultDto<ProductResponseDto>> GetPagedProductsAsync(ProductListRequestDto request);
 }

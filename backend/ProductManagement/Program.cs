@@ -47,33 +47,43 @@ var host = new HostBuilder()
             }
         });
 
-        // Configure Redis (if enabled)
+        // Configure Redis (always register, but conditionally connect)
         var featureFlags = configuration.GetSection("FeatureFlags").Get<FeatureFlagsConfig>();
-        if (featureFlags?.UseRedisCache == true)
+        services.AddSingleton<IConnectionMultiplexer>(provider =>
         {
-            var redisConnectionString = configuration.GetConnectionString("RedisConnection");
-            if (!string.IsNullOrEmpty(redisConnectionString))
+            var logger = provider.GetService<ILogger<Program>>();
+
+            if (featureFlags?.UseRedisCache != true)
             {
-                services.AddSingleton<IConnectionMultiplexer>(provider =>
-                {
-                    var logger = provider.GetService<ILogger<Program>>();
-                    try
-                    {
-                        return ConnectionMultiplexer.Connect(redisConnectionString);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger?.LogWarning(ex, "Failed to connect to Redis. Continuing without cache.");
-                        return null!;
-                    }
-                });
+                logger?.LogInformation("Redis cache is disabled via feature flags");
+                return null!;
             }
-        }
+
+            var redisConnectionString = configuration.GetConnectionString("RedisConnection");
+            if (string.IsNullOrEmpty(redisConnectionString))
+            {
+                logger?.LogWarning("Redis connection string is not configured");
+                return null!;
+            }
+
+            try
+            {
+                var multiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
+                logger?.LogInformation("Successfully connected to Redis at {ConnectionString}", redisConnectionString);
+                return multiplexer;
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Failed to connect to Redis at {ConnectionString}. Continuing without cache.", redisConnectionString);
+                return null!;
+            }
+        });
 
         // Register configuration objects
         services.Configure<ExternalServiceConfig>(configuration.GetSection("ExternalServices"));
         services.Configure<FeatureFlagsConfig>(configuration.GetSection("FeatureFlags"));
         services.Configure<ApplicationSettingsConfig>(configuration.GetSection("ApplicationSettings"));
+        services.Configure<CacheSettingsConfig>(configuration.GetSection("CacheSettings"));
 
         // Register repositories and unit of work
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -83,6 +93,7 @@ var host = new HostBuilder()
         // Register services
         services.AddScoped<ISeedDataService, SeedDataService>();
         services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<ICacheService, RedisCacheService>();
 
         // Register FluentValidation
         services.AddValidatorsFromAssemblyContaining<Program>();

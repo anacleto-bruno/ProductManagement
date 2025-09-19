@@ -5,6 +5,9 @@ using ProductManagement.Dtos;
 using ProductManagement.Infrastructure.Functions;
 using ProductManagement.Models.Validation;
 using ProductManagement.Services.Interfaces;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.OpenApi.Models;
+using System.Net;
 
 namespace ProductManagement.Functions;
 
@@ -22,6 +25,13 @@ public class UpdateProductFunction : BaseFunctionWithValidation<UpdateProductReq
     }
 
     [Function("UpdateProduct")]
+    [OpenApiOperation(operationId: "UpdateProduct", tags: new[] { "Products" }, Summary = "Update product by ID", Description = "Updates an existing product with new information")]
+    [OpenApiParameter(name: "id", In = ParameterLocation.Path, Required = true, Type = typeof(int), Summary = "Product ID", Description = "The unique identifier of the product to update")]
+    [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(UpdateProductRequestDto), Required = true, Description = "Product update request")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(ProductResponseDto), Summary = "Product updated successfully", Description = "Returns the updated product")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.BadRequest, Summary = "Invalid request", Description = "The request body is invalid or missing required fields")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "Product not found", Description = "No product found with the specified ID")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.InternalServerError, Summary = "Internal server error", Description = "An error occurred while updating the product")]
     public async Task<HttpResponseData> RunAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "products/{id:int}")] HttpRequestData req,
         int id)

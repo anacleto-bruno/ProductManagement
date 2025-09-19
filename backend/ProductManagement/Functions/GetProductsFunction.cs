@@ -6,6 +6,9 @@ using ProductManagement.Infrastructure.Functions;
 using ProductManagement.Models.Validation;
 using ProductManagement.Services.Interfaces;
 using System.Web;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.OpenApi.Models;
+using System.Net;
 
 namespace ProductManagement.Functions;
 
@@ -25,6 +28,19 @@ public class GetProductsFunction : BaseFunction
     }
 
     [Function("GetProducts")]
+    [OpenApiOperation(operationId: "GetProducts", tags: new[] { "Products" }, Summary = "Get paginated products list", Description = "Retrieves a paginated list of products with optional filtering and sorting")]
+    [OpenApiParameter(name: "page", In = ParameterLocation.Query, Required = false, Type = typeof(int), Summary = "Page number", Description = "Page number for pagination (default: 1)")]
+    [OpenApiParameter(name: "per_page", In = ParameterLocation.Query, Required = false, Type = typeof(int), Summary = "Items per page", Description = "Number of items per page (default: 20, max: 100)")]
+    [OpenApiParameter(name: "sort_by", In = ParameterLocation.Query, Required = false, Type = typeof(string), Summary = "Sort field", Description = "Field to sort by (name, price, createdat, brand, category)")]
+    [OpenApiParameter(name: "descending", In = ParameterLocation.Query, Required = false, Type = typeof(bool), Summary = "Sort order", Description = "Sort in descending order (default: false)")]
+    [OpenApiParameter(name: "search", In = ParameterLocation.Query, Required = false, Type = typeof(string), Summary = "Search term", Description = "Search term to filter products by name or description")]
+    [OpenApiParameter(name: "category", In = ParameterLocation.Query, Required = false, Type = typeof(string), Summary = "Category filter", Description = "Filter products by category")]
+    [OpenApiParameter(name: "brand", In = ParameterLocation.Query, Required = false, Type = typeof(string), Summary = "Brand filter", Description = "Filter products by brand")]
+    [OpenApiParameter(name: "min_price", In = ParameterLocation.Query, Required = false, Type = typeof(decimal), Summary = "Minimum price", Description = "Filter products with price greater than or equal to this value")]
+    [OpenApiParameter(name: "max_price", In = ParameterLocation.Query, Required = false, Type = typeof(decimal), Summary = "Maximum price", Description = "Filter products with price less than or equal to this value")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(PagedResultDto<ProductResponseDto>), Summary = "Products retrieved successfully", Description = "Returns paginated list of products with metadata")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.BadRequest, Summary = "Invalid parameters", Description = "Invalid query parameters provided")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.InternalServerError, Summary = "Internal server error", Description = "An error occurred while retrieving products")]
     public async Task<HttpResponseData> RunAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products")] HttpRequestData req)
     {

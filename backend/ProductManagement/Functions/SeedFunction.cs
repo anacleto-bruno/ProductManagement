@@ -6,6 +6,8 @@ using ProductManagement.Services.Interfaces;
 using ProductManagement.Models.Validation;
 using ProductManagement.Infrastructure.Functions;
 using System.Net;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.OpenApi.Models;
 
 namespace ProductManagement.Functions;
 
@@ -23,6 +25,12 @@ public class SeedFunction : BaseFunctionWithValidation<SeedRequestDto, SeedReque
     }
 
     [Function("SeedProducts")]
+    [OpenApiOperation(operationId: "SeedProducts", tags: new[] { "Data Management" }, Summary = "Seed database with sample products", Description = "Seeds the database with mock product data for testing and development purposes")]
+    [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(SeedRequestDto), Required = true, Description = "Seed configuration request")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(SeedResponseDto), Summary = "Database seeded successfully", Description = "Returns statistics about the seeding operation")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.BadRequest, Summary = "Invalid request", Description = "The request body is invalid or missing required fields")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.Unauthorized, Summary = "Unauthorized", Description = "Function key required for this operation")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.InternalServerError, Summary = "Internal server error", Description = "An error occurred during the seeding operation")]
     public async Task<HttpResponseData> RunAsync(
         [HttpTrigger(AuthorizationLevel.Function, "post", Route = "products/seed")] HttpRequestData req,
         FunctionContext context)

@@ -13,9 +13,11 @@ using ProductManagement.Services.Interfaces;
 using StackExchange.Redis;
 using FluentValidation;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Azure.Functions.Worker.Extensions.OpenApi.Extensions;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
+    .ConfigureOpenApi()
     .ConfigureAppConfiguration((context, config) =>
     {
         config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);

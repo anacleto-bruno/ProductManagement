@@ -14,7 +14,9 @@
       "Bash(docker:*)",
       "Bash(git checkout:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebSearch",
+      "Bash(/bashes)"
     ],
     "deny": [],
     "ask": []

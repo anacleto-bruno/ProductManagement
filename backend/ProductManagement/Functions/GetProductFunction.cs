@@ -4,6 +4,9 @@ using Microsoft.Extensions.Logging;
 using ProductManagement.Dtos;
 using ProductManagement.Infrastructure.Functions;
 using ProductManagement.Services.Interfaces;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.OpenApi.Models;
+using System.Net;
 
 namespace ProductManagement.Functions;
 
@@ -20,6 +23,11 @@ public class GetProductFunction : BaseFunction
     }
 
     [Function("GetProduct")]
+    [OpenApiOperation(operationId: "GetProduct", tags: new[] { "Products" }, Summary = "Get product by ID", Description = "Retrieves a specific product by its ID")]
+    [OpenApiParameter(name: "id", In = ParameterLocation.Path, Required = true, Type = typeof(int), Summary = "Product ID", Description = "The unique identifier of the product")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(ProductResponseDto), Summary = "Product found", Description = "Returns the requested product")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NotFound, Summary = "Product not found", Description = "No product found with the specified ID")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.InternalServerError, Summary = "Internal server error", Description = "An error occurred while retrieving the product")]
     public async Task<HttpResponseData> RunAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products/{id:int}")] HttpRequestData req,
         int id)

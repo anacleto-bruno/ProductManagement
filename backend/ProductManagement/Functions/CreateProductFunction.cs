@@ -5,6 +5,9 @@ using ProductManagement.Dtos;
 using ProductManagement.Infrastructure.Functions;
 using ProductManagement.Models.Validation;
 using ProductManagement.Services.Interfaces;
+using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+using Microsoft.OpenApi.Models;
+using System.Net;
 
 namespace ProductManagement.Functions;
 
@@ -22,6 +25,11 @@ public class CreateProductFunction : BaseFunctionWithValidation<CreateProductReq
     }
 
     [Function("CreateProduct")]
+    [OpenApiOperation(operationId: "CreateProduct", tags: new[] { "Products" }, Summary = "Create a new product", Description = "Creates a new product with the provided information")]
+    [OpenApiRequestBody(contentType: "application/json", bodyType: typeof(CreateProductRequestDto), Required = true, Description = "Product creation request")]
+    [OpenApiResponseWithBody(statusCode: HttpStatusCode.OK, contentType: "application/json", bodyType: typeof(ProductResponseDto), Summary = "Product created successfully", Description = "Returns the created product")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.BadRequest, Summary = "Invalid request", Description = "The request body is invalid or missing required fields")]
+    [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.InternalServerError, Summary = "Internal server error", Description = "An error occurred while creating the product")]
     public async Task<HttpResponseData> RunAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "products")] HttpRequestData req)
     {

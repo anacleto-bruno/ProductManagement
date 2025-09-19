@@ -198,7 +198,7 @@ Maintain clear separation of concerns across layers:
 ### Features
 - `README.md` with setup instructions for backend & frontend  
 - Docker usage instructions (`docker-compose up`)  
-- API reference (Swagger or Markdown docs)  
+- API reference (Swagger)  
 - Contribution guide for developers  
 
 ### Acceptance Criteria

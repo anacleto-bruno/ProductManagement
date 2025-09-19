@@ -75,10 +75,12 @@ var host = new HostBuilder()
 
         // Register repositories and unit of work
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Register services
         services.AddScoped<ISeedDataService, SeedDataService>();
+        services.AddScoped<IProductService, ProductService>();
 
         // Register FluentValidation
         services.AddValidatorsFromAssemblyContaining<Program>();

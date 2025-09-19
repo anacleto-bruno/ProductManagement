@@ -10,7 +10,7 @@ public class UnitOfWork : IUnitOfWork
     private readonly ProductManagementContext _context;
     private IDbContextTransaction? _transaction;
 
-    private IRepository<Product>? _products;
+    private IProductRepository? _products;
     private IRepository<Color>? _colors;
     private IRepository<Size>? _sizes;
     private IRepository<ProductColor>? _productColors;
@@ -21,7 +21,7 @@ public class UnitOfWork : IUnitOfWork
         _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
-    public IRepository<Product> Products => _products ??= new Repository<Product>(_context);
+    public IProductRepository Products => _products ??= new ProductRepository(_context);
     public IRepository<Color> Colors => _colors ??= new Repository<Color>(_context);
     public IRepository<Size> Sizes => _sizes ??= new Repository<Size>(_context);
     public IRepository<ProductColor> ProductColors => _productColors ??= new Repository<ProductColor>(_context);

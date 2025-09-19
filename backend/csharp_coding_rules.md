@@ -67,24 +67,32 @@ Maintain clear separation of concerns across layers:
 
 ---
 
-## Repository Pattern
+## Repository Pattern & Entity Framework
 
 ### Generic Repository Structure
 ```csharp
 public interface IRepository<T> where T : class
 {
-    Task<T> GetByIdAsync(int id);
+    Task<T?> GetByIdAsync(int id);
     Task<IEnumerable<T>> GetAllAsync();
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
+    Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
     Task<T> AddAsync(T entity);
     Task UpdateAsync(T entity);
     Task DeleteAsync(int id);
+    Task DeleteAsync(T entity);
+    Task<bool> ExistsAsync(int id);
+    Task<int> CountAsync();
+    Task<int> CountAsync(Expression<Func<T, bool>> predicate);
+    Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize);
+    Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize, Expression<Func<T, bool>>? predicate = null);
 }
 
 public class Repository<T> : IRepository<T> where T : class
 {
-    protected readonly ProjectNameContext _context;
-    
-    public Repository(ProjectNameContext context)
+    protected readonly DbContext _context;
+
+    public Repository(DbContext context)
     {
         _context = context;
     }
@@ -92,10 +100,327 @@ public class Repository<T> : IRepository<T> where T : class
 }
 ```
 
-### Context Inheritance
-- Use `ProjectNameContext` as the base DbContext
-- Inherit from base repository for specific entity repositories
-- Implement unit of work pattern for transaction management
+### Specialized Repository Pattern
+Create entity-specific repositories for complex querying and DTO projections:
+
+```csharp
+public interface IProductRepository : IRepository<Product>
+{
+    Task<ProductResponseDto?> GetProductDtoByIdAsync(int id);
+    Task<IEnumerable<ProductResponseDto>> GetProductDtosAsync(
+        string? searchTerm = null,
+        string? category = null,
+        decimal? minPrice = null,
+        decimal? maxPrice = null,
+        string? sortBy = null,
+        bool descending = false,
+        int page = 1,
+        int pageSize = 20);
+    Task<int> GetProductCountAsync(string? searchTerm = null, string? category = null);
+    Task<bool> ExistsBySkuAsync(string sku, int? excludeId = null);
+}
+
+public class ProductRepository : Repository<Product>, IProductRepository
+{
+    public ProductRepository(DbContext context) : base(context) { }
+
+    public async Task<ProductResponseDto?> GetProductDtoByIdAsync(int id)
+    {
+        return await _context.Products
+            .Where(p => p.Id == id)
+            .Select(p => new ProductResponseDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                // ... other properties
+            })
+            .FirstOrDefaultAsync();
+    }
+    // ... other implementations
+}
+```
+
+### Entity Configuration Separation
+Use `IEntityTypeConfiguration<T>` to separate entity configurations:
+
+```csharp
+public class ProductConfiguration : IEntityTypeConfiguration<Product>
+{
+    public void Configure(EntityTypeBuilder<Product> builder)
+    {
+        builder.HasKey(p => p.Id);
+
+        builder.Property(p => p.Name)
+            .IsRequired()
+            .HasMaxLength(255);
+
+        builder.Property(p => p.Price)
+            .HasPrecision(18, 2);
+
+        // Performance indexes
+        builder.HasIndex(p => p.Name);
+        builder.HasIndex(p => p.Sku).IsUnique();
+
+        // Composite indexes for common query patterns
+        builder.HasIndex(p => new { p.Category, p.Brand });
+
+        // Configure relationships
+        builder.HasMany(p => p.ProductColors)
+            .WithOne(pc => pc.Product)
+            .HasForeignKey(pc => pc.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+// Apply in DbContext
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    base.OnModelCreating(modelBuilder);
+
+    // Apply all configurations from assembly
+    modelBuilder.ApplyConfigurationsFromAssembly(typeof(ProductConfiguration).Assembly);
+
+    // Configure naming convention for PostgreSQL
+    foreach (var entity in modelBuilder.Model.GetEntityTypes())
+    {
+        entity.SetTableName(entity.GetTableName()?.ToLowerInvariant());
+        foreach (var property in entity.GetProperties())
+        {
+            property.SetColumnName(property.GetColumnName().ToLowerInvariant());
+        }
+    }
+}
+```
+
+### Query Extensions Pattern
+Create fluent query extensions for reusable filtering and sorting:
+
+```csharp
+public static class ProductQueryExtensions
+{
+    public static IQueryable<Product> IncludeRelated(this IQueryable<Product> query)
+    {
+        return query
+            .Include(p => p.ProductColors)
+                .ThenInclude(pc => pc.Color)
+            .Include(p => p.ProductSizes)
+                .ThenInclude(ps => ps.Size);
+    }
+
+    public static IQueryable<Product> WhereCategory(this IQueryable<Product> query, string? category)
+    {
+        return string.IsNullOrEmpty(category)
+            ? query
+            : query.Where(p => p.Category.ToLower() == category.ToLower());
+    }
+
+    public static IQueryable<Product> WherePriceRange(this IQueryable<Product> query, decimal? minPrice, decimal? maxPrice)
+    {
+        if (minPrice.HasValue)
+            query = query.Where(p => p.Price >= minPrice.Value);
+        if (maxPrice.HasValue)
+            query = query.Where(p => p.Price <= maxPrice.Value);
+        return query;
+    }
+
+    public static IQueryable<Product> WhereSearch(this IQueryable<Product> query, string? searchTerm)
+    {
+        if (string.IsNullOrEmpty(searchTerm))
+            return query;
+
+        var lowerSearchTerm = searchTerm.ToLower();
+        return query.Where(p =>
+            p.Name.ToLower().Contains(lowerSearchTerm) ||
+            p.Description.ToLower().Contains(lowerSearchTerm) ||
+            p.Brand.ToLower().Contains(lowerSearchTerm));
+    }
+
+    public static IQueryable<Product> OrderByField(this IQueryable<Product> query, string? sortBy, bool descending = false)
+    {
+        return sortBy?.ToLower() switch
+        {
+            "name" => descending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
+            "price" => descending ? query.OrderByDescending(p => p.Price) : query.OrderBy(p => p.Price),
+            "createdat" => descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt),
+            _ => descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt)
+        };
+    }
+}
+```
+
+### Unit of Work Pattern
+Implement Unit of Work with specific repository types:
+
+```csharp
+public interface IUnitOfWork : IDisposable
+{
+    IProductRepository Products { get; }
+    IRepository<Color> Colors { get; }
+    IRepository<Size> Sizes { get; }
+
+    Task<int> SaveChangesAsync();
+    Task BeginTransactionAsync();
+    Task CommitTransactionAsync();
+    Task RollbackTransactionAsync();
+}
+
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly DbContext _context;
+    private IProductRepository? _products;
+    private IRepository<Color>? _colors;
+
+    public UnitOfWork(DbContext context)
+    {
+        _context = context;
+    }
+
+    public IProductRepository Products => _products ??= new ProductRepository(_context);
+    public IRepository<Color> Colors => _colors ??= new Repository<Color>(_context);
+
+    // ... transaction methods
+}
+```
+
+### Mapping Extensions Pattern
+Create extension methods for clean entity-DTO mapping:
+
+```csharp
+public static class MappingExtensions
+{
+    public static ProductResponseDto ToResponseDto(this Product product)
+    {
+        return new ProductResponseDto
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            CreatedAt = product.CreatedAt,
+            UpdatedAt = product.UpdatedAt
+        };
+    }
+
+    public static Product ToEntity(this CreateProductRequestDto dto)
+    {
+        return new Product
+        {
+            Name = dto.Name,
+            Description = dto.Description,
+            Price = dto.Price,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    public static void UpdateFromDto(this Product product, UpdateProductRequestDto dto)
+    {
+        product.Name = dto.Name;
+        product.Description = dto.Description;
+        product.Price = dto.Price;
+        product.UpdatedAt = DateTime.UtcNow;
+    }
+
+    public static IEnumerable<ProductResponseDto> ToResponseDtos(this IEnumerable<Product> products)
+    {
+        return products.Select(p => p.ToResponseDto());
+    }
+}
+```
+
+### DbContext Best Practices
+- Implement automatic timestamp handling in `SaveChanges` override
+- Use lazy loading judiciously (prefer explicit Include/ThenInclude)
+- Configure connection resiliency for cloud environments
+- Implement proper naming conventions for database compatibility
+
+### Performance Optimization Patterns
+
+#### Direct DTO Projection
+Always prefer direct DTO projection over entity materialization for read operations:
+
+```csharp
+// ✅ PREFERRED: Direct projection (no entity tracking overhead)
+public async Task<IEnumerable<ProductSummaryDto>> GetProductSummariesAsync()
+{
+    return await _context.Products
+        .Select(p => new ProductSummaryDto
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Price = p.Price
+        })
+        .ToListAsync();
+}
+
+// ❌ AVOID: Entity materialization then mapping
+public async Task<IEnumerable<ProductSummaryDto>> GetProductSummariesAsync()
+{
+    var products = await _context.Products.ToListAsync(); // Loads entire entities
+    return products.Select(p => p.ToSummaryDto()); // Additional mapping step
+}
+```
+
+#### Query Optimization Rules
+1. **Always use `.AsNoTracking()`** for read-only queries
+2. **Project to DTOs** instead of loading full entities
+3. **Use specific field selection** rather than loading entire entities
+4. **Implement pagination** for all list queries
+5. **Add appropriate indexes** for filtering and sorting fields
+
+#### Filtering and Searching Best Practices
+```csharp
+// ✅ EFFICIENT: Database-level filtering with indexes
+public async Task<IEnumerable<ProductDto>> SearchProductsAsync(string searchTerm, int page, int pageSize)
+{
+    return await _context.Products
+        .AsNoTracking()
+        .Where(p => p.Name.Contains(searchTerm) || p.Description.Contains(searchTerm))
+        .OrderBy(p => p.Name)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(p => new ProductDto { /* projection */ })
+        .ToListAsync();
+}
+
+// ❌ INEFFICIENT: Client-side filtering
+public async Task<IEnumerable<ProductDto>> SearchProductsAsync(string searchTerm)
+{
+    var allProducts = await _context.Products.ToListAsync(); // Loads everything
+    return allProducts
+        .Where(p => p.Name.Contains(searchTerm))
+        .Select(p => p.ToDto());
+}
+```
+
+### Entity Framework Design Rules
+
+#### Repository Implementation Rules
+1. **Specialized repositories** should inherit from generic repository
+2. **Always implement interface-first** for testability
+3. **Use DTO projections** in specialized repository methods
+4. **Keep generic repository simple** - complex queries go in specialized repos
+5. **Register both generic and specialized** repositories in DI container
+
+```csharp
+// Registration in Program.cs
+services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+services.AddScoped<IProductRepository, ProductRepository>();
+services.AddScoped<IOrderRepository, OrderRepository>();
+```
+
+#### Mapping Strategy Rules
+1. **Entity to DTO**: Use extension methods (`.ToResponseDto()`)
+2. **DTO to Entity**: Use extension methods (`.ToEntity()`)
+3. **Entity updates**: Use extension methods (`.UpdateFromDto()`)
+4. **Collection mapping**: Use extension methods (`.ToResponseDtos()`)
+5. **Complex mappings**: Consider dedicated mapping classes for complex scenarios
+
+#### Configuration Organization
+1. **One configuration class per entity** (`IEntityTypeConfiguration<T>`)
+2. **Group related configurations** in same namespace/folder
+3. **Apply all configurations** using `ApplyConfigurationsFromAssembly()`
+4. **Separate database-specific logic** (naming conventions, etc.)
 
 ---
 
@@ -104,9 +429,35 @@ public class Repository<T> : IRepository<T> where T : class
 ### Service Registration Patterns
 ```csharp
 // In Program.cs
+
+// Entity Framework
+services.AddDbContext<ApplicationDbContext>(options =>
+{
+    options.UseNpgsql(connectionString);
+    // Configure for development
+    if (context.HostingEnvironment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
+
+// Repository Pattern Registration
+services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+services.AddScoped<IProductRepository, ProductRepository>();
+services.AddScoped<IOrderRepository, OrderRepository>();
+services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// Business Services
 services.AddScoped<IProductService, ProductService>();
-services.AddScoped<IUserRepository, UserRepository>();
+services.AddScoped<IOrderService, OrderService>();
+
+// Infrastructure Services
 services.AddSingleton<ICacheService, RedisCacheService>();
+services.AddScoped<IEmailService, EmailService>();
+
+// FluentValidation
+services.AddValidatorsFromAssemblyContaining<Program>();
 ```
 
 ### Lifetime Management
@@ -504,6 +855,49 @@ public async Task<Result<User>> GetUserAsync(int id)
 6. **Integration Patterns**: How do you handle integration with external services and APIs?
 7. **Deployment Strategies**: What deployment patterns do you follow (blue-green, canary, etc.)?
 8. **Monitoring and Alerting**: What specific monitoring and alerting strategies should be included?
+
+---
+
+## Entity Framework Improvements Summary
+
+### Key Architectural Patterns Implemented
+
+| **Pattern** | **Purpose** | **Benefits** |
+|-------------|-------------|--------------|
+| **Specialized Repositories** | Entity-specific querying with DTO projections | Better performance, cleaner code separation |
+| **Query Extensions** | Reusable, composable query filters | DRY principle, consistent filtering logic |
+| **Mapping Extensions** | Fluent entity-DTO conversion | Clean, testable mapping logic |
+| **Configuration Separation** | Entity configurations in dedicated classes | Better organization, maintainability |
+| **Direct DTO Projection** | Query directly to DTOs instead of entities | Improved performance, reduced memory usage |
+
+### Performance Benefits
+
+1. **Direct DTO Projection** - Eliminates entity tracking overhead
+2. **Specialized Queries** - Optimized for specific use cases
+3. **Composable Filtering** - Database-level filtering with proper indexing
+4. **Reduced Data Transfer** - Only load required fields
+5. **Better Caching** - DTOs are more cache-friendly than entities
+
+### Implementation Checklist
+
+When implementing new entities, ensure:
+
+- [ ] **Entity Configuration** - Create `IEntityTypeConfiguration<T>` class
+- [ ] **Specialized Repository** - Create entity-specific repository with DTO projections
+- [ ] **Query Extensions** - Add filtering/sorting extensions for common operations
+- [ ] **Mapping Extensions** - Create fluent mapping methods (`.ToDto()`, `.ToEntity()`, `.UpdateFromDto()`)
+- [ ] **Service Registration** - Register all repositories and services in DI container
+- [ ] **Performance Indexes** - Add database indexes for filtering and sorting fields
+- [ ] **Unit Tests** - Test repository methods and mapping extensions
+
+### Code Quality Standards
+
+- **Always prefer interfaces** over concrete types in dependencies
+- **Use async/await** for all database operations
+- **Implement pagination** for all list queries
+- **Add proper error handling** with Result pattern
+- **Use FluentValidation** for input validation
+- **Maintain separation of concerns** across layers
 
 ---
 

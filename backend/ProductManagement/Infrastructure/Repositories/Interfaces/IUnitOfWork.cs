@@ -4,7 +4,7 @@ namespace ProductManagement.Infrastructure.Repositories.Interfaces;
 
 public interface IUnitOfWork : IDisposable
 {
-    IRepository<Product> Products { get; }
+    IProductRepository Products { get; }
     IRepository<Color> Colors { get; }
     IRepository<Size> Sizes { get; }
     IRepository<ProductColor> ProductColors { get; }

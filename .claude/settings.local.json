@@ -13,7 +13,8 @@
       "Bash(curl:*)",
       "Bash(docker:*)",
       "Bash(git checkout:*)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

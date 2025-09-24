@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useProductSearch } from '~/hooks/use-products'
+import { useProducts } from '~/hooks/use-products'
 import { useProductStore } from '~/states/product-store'
 import { useState } from 'react'
 import { Input } from '~/components/ui/input'
@@ -13,8 +13,8 @@ export default function SearchPage() {
   const [activeSearch, setActiveSearch] = useState('')
   
   const filters = useProductStore(state => state.filters)
-  const { data, isLoading, error } = useProductSearch({ 
-    searchTerm: activeSearch,
+  const { data, isLoading, error } = useProducts({ 
+    search: activeSearch,
     category: filters.category || undefined,
     brand: filters.brand || undefined,
     minPrice: filters.minPrice || undefined,
@@ -49,13 +49,13 @@ export default function SearchPage() {
         <div>
           <p>{t('common:error')}</p>
         </div>
-      ) : data?.items.length === 0 ? (
+      ) : data?.data.length === 0 ? (
         <div>
           <p>{t('messages.noProductsFound')}</p>
         </div>
       ) : data ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data.items.map(product => (
+          {data.data.map(product => (
             <Card key={product.id}>
               <CardHeader>
                 <CardTitle>{product.name}</CardTitle>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import productApi from '../api/product-api'
 import type { 
@@ -13,21 +14,24 @@ export const useProducts = (params: ProductListRequest = {}) => {
   const { page = 1, perPage = 20 } = params
 
   const queryResult = useQuery({
-    queryKey: ['products', params],
+    queryKey: ['products', { page, perPage, ...params }],
     queryFn: async () => {
       const response = await productApi.getProducts(params)
-      
-      // Update the store with pagination data
-      setStorePagination({
-        page,
-        perPage,
-        totalItems: response.totalCount,
-        totalPages: response.totalPages
-      })
-      
       return response
     }
   })
+
+  // Update store pagination when data changes, not during query function
+  useEffect(() => {
+    if (queryResult.data?.pagination) {
+      setStorePagination({
+        page,
+        perPage,
+        totalItems: queryResult.data.pagination.totalCount,
+        totalPages: queryResult.data.pagination.totalPages
+      })
+    }
+  }, [queryResult.data?.pagination, page, perPage, setStorePagination])
 
   return queryResult
 }

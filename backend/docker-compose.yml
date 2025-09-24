@@ -39,8 +39,8 @@ services:
 
   productmanagement-api:
     build:
-      context: .
-      dockerfile: ProductManagement/Dockerfile
+      context: ./ProductManagement
+      dockerfile: Dockerfile
     container_name: productmanagement-api
     environment:
       - ASPNETCORE_ENVIRONMENT=Docker

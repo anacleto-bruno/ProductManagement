@@ -8,5 +8,18 @@
       },
       "enableLiveMetricsFilters": true
     }
+  },
+  "extensions": {
+    "http": {
+      "customHeaders": {
+        "X-Powered-By": "ProductManagement API"
+      }
+    }
+  },
+  "cors": {
+    "allowCredentials": false,
+    "allowedOrigins": [
+      "*"
+    ]
   }
 }

@@ -27,18 +27,21 @@ export interface Size {
 }
 
 export interface PaginatedResponse<T> {
-  items: T[]
-  totalCount: number
-  currentPage: number
-  totalPages: number
-  hasNextPage: boolean
-  hasPreviousPage: boolean
+  data: T[]
+  pagination: {
+    currentPage: number
+    perPage: number
+    totalCount: number
+    totalPages: number
+    hasNextPage: boolean
+    hasPreviousPage: boolean
+  }
 }
 
 export interface ProductListRequest {
   page?: number
   perPage?: number
-  searchTerm?: string
+  search?: string
   category?: string
   brand?: string
   minPrice?: number

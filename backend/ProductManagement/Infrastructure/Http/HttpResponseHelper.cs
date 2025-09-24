@@ -18,6 +18,9 @@ public static class HttpResponseHelper
     {
         var response = request.CreateResponse(statusCode);
         response.Headers.Add("Content-Type", "application/json");
+        
+        // Add CORS headers
+        AddCorsHeaders(response, request);
 
         await response.WriteStringAsync(JsonSerializer.Serialize(data, DefaultJsonOptions));
         return response;
@@ -47,6 +50,15 @@ public static class HttpResponseHelper
         };
 
         return await CreateJsonResponseAsync(request, errorResponse, HttpStatusCode.BadRequest);
+    }
+
+    private static void AddCorsHeaders(HttpResponseData response, HttpRequestData request)
+    {
+        // Add CORS headers to allow cross-origin requests
+        response.Headers.Add("Access-Control-Allow-Origin", "*");
+        response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, Origin, X-Requested-With");
+        response.Headers.Add("Access-Control-Max-Age", "86400");
     }
 }
 

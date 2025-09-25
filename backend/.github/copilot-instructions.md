@@ -11,10 +11,98 @@ This document outlines the coding standards, patterns, and conventions for the {
 - **PostgreSQL** - Primary database with Entity Framework Core
 - **Redis** - Caching layer
 - **Docker** - Containerization
-- **MongoDB** - Additional data storage (as indicated by MongoDB.Driver package)
 
 ---
 
+## Code Quality Standards
+
+### SOLID Principles
+- **Single Responsibility**: Each class should have one reason to change
+- **Open/Closed**: Open for extension, closed for modification
+- **Liskov Substitution**: Derived classes must be substitutable for base classes
+- **Interface Segregation**: Clients shouldn't depend on interfaces they don't use
+- **Dependency Inversion**: Depend on abstractions, not concretions
+
+### Code Quality Standards
+- **Always prefer interfaces** over concrete types in dependencies
+- **Use async/await** for all database operations
+- **Implement pagination** for all list queries
+- **Add proper error handling** with Result pattern
+- **Use FluentValidation** for input validation
+- **Maintain separation of concerns** across layers
+
+### Error Handling
+```csharp
+public async Task<Result<User>> GetUserAsync(int id)
+{
+    try
+    {
+        if (id <= 0)
+            return Result<User>.Failure("Invalid user ID");
+            
+        var user = await _repository.GetByIdAsync(id);
+        return user != null 
+            ? Result<User>.Success(user)
+            : Result<User>.Failure("User not found");
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error retrieving user with ID {UserId}", id);
+        return Result<User>.Failure("An error occurred while retrieving the user");
+    }
+}
+```
+
+### Logging Standards
+- Use structured logging with Serilog
+- Include correlation IDs for request tracking
+- Log at appropriate levels: Trace, Debug, Information, Warning, Error, Critical
+- Include relevant context in log messages
+
+### Performance Guidelines
+- Use async/await for I/O operations
+- Implement caching for frequently accessed data
+- Use connection pooling for database connections
+- Implement pagination for large data sets
+- Use streaming for large file operations
+
+---
+
+## Security Guidelines
+
+### Authentication & Authorization
+- Validate all input parameters
+- Implement proper CORS policies
+- Use HTTPS for all external communications
+
+### Data Protection
+- Sanitize HTML content using `HtmlSanitizer`
+- Validate and sanitize all user inputs
+- Use parameterized queries to prevent SQL injection
+- Encrypt sensitive data at rest and in transit
+
+### Secret Management
+- Store secrets in Azure Key Vault
+- Use managed identities when possible
+- Never commit secrets to source control
+- Rotate secrets regularly
+
+---
+
+## Docker & Deployment
+
+### Dockerfile Standards
+- Use multi-stage builds for optimization
+- Follow least privilege principle
+- Minimize layer count
+- Use specific base image versions
+
+### Environment Variables
+- Use environment variables for configuration
+- Provide default values where appropriate
+- Document all required environment variables
+
+---
 ## Architecture Patterns
 
 ### Clean Architecture
@@ -69,43 +157,23 @@ Maintain clear separation of concerns across layers:
 
 ## Repository Pattern & Entity Framework
 
-### Generic Repository Structure
-```csharp
-public interface IRepository<T> where T : class
-{
-    Task<T?> GetByIdAsync(int id);
-    Task<IEnumerable<T>> GetAllAsync();
-    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
-    Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate);
-    Task<T> AddAsync(T entity);
-    Task UpdateAsync(T entity);
-    Task DeleteAsync(int id);
-    Task DeleteAsync(T entity);
-    Task<bool> ExistsAsync(int id);
-    Task<int> CountAsync();
-    Task<int> CountAsync(Expression<Func<T, bool>> predicate);
-    Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize);
-    Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize, Expression<Func<T, bool>>? predicate = null);
-}
-
-public class Repository<T> : IRepository<T> where T : class
-{
-    protected readonly DbContext _context;
-
-    public Repository(DbContext context)
-    {
-        _context = context;
-    }
-    // Implementation...
-}
-```
-
-### Specialized Repository Pattern
-Create entity-specific repositories for complex querying and DTO projections:
+###  Repository Pattern and Structure
+Create mixed Repository Structure and entity-specific repositories 
 
 ```csharp
 public interface IProductRepository : IRepository<Product>
 {
+    Task<T?> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T> AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(int id);
+    Task DeleteAsync(T entity);
+    Task<int> CountAsync();
+    Task<int> CountAsync(Expression<Func<T, bool>> predicate);
+    Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize);
+    Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize, Expression<Func<T, bool>>? predicate = null);
+
     Task<ProductResponseDto?> GetProductDtoByIdAsync(int id);
     Task<IEnumerable<ProductResponseDto>> GetProductDtosAsync(
         string? searchTerm = null,
@@ -245,40 +313,6 @@ public static class ProductQueryExtensions
             _ => descending ? query.OrderByDescending(p => p.CreatedAt) : query.OrderBy(p => p.CreatedAt)
         };
     }
-}
-```
-
-### Unit of Work Pattern
-Implement Unit of Work with specific repository types:
-
-```csharp
-public interface IUnitOfWork : IDisposable
-{
-    IProductRepository Products { get; }
-    IRepository<Color> Colors { get; }
-    IRepository<Size> Sizes { get; }
-
-    Task<int> SaveChangesAsync();
-    Task BeginTransactionAsync();
-    Task CommitTransactionAsync();
-    Task RollbackTransactionAsync();
-}
-
-public class UnitOfWork : IUnitOfWork
-{
-    private readonly DbContext _context;
-    private IProductRepository? _products;
-    private IRepository<Color>? _colors;
-
-    public UnitOfWork(DbContext context)
-    {
-        _context = context;
-    }
-
-    public IProductRepository Products => _products ??= new ProductRepository(_context);
-    public IRepository<Color> Colors => _colors ??= new Repository<Color>(_context);
-
-    // ... transaction methods
 }
 ```
 
@@ -514,51 +548,6 @@ services.Configure<ExternalServiceConfig>(
 
 ---
 
-## Testing Strategy
-
-### Project Structure
-Mirror the main project structure in test project:
-```
-{ProjectName}.Tests/
-├── Functions/          # Function endpoint tests
-├── Services/           # Business logic tests
-├── Infrastructure/     # Infrastructure layer tests
-├── Helpers/           # Utility test classes
-├── Dtos/              # DTO validation tests
-└── Models/            # Model tests
-```
-
-### Testing Frameworks
-- **xUnit** - Primary testing framework
-- **FluentAssertions** - Assertion library
-- **FakeItEasy** - Mocking framework (as indicated by TestsBase)
-- **Microsoft.EntityFrameworkCore.InMemory** - In-memory database for unit tests
-
-### Test Naming Convention
-```csharp
-[Fact]
-public async Task GetUserAsync_WithValidId_ReturnsUser()
-{
-    // Method_Scenario_ExpectedResult
-}
-
-[Theory]
-[InlineData(1, "John")]
-[InlineData(2, "Jane")]
-public async Task GetUserAsync_WithMultipleIds_ReturnsCorrectUsers(int id, string expectedName)
-{
-    // Theory tests for multiple inputs
-}
-```
-
-### Test Categories
-1. **Unit Tests**: Test individual components in isolation
-2. **Integration Tests**: Test component interactions with real database
-3. **API Tests**: End-to-end function testing
-4. **Smoke Tests**: Basic functionality verification
-
----
-
 ## Azure Functions Architecture Patterns
 
 ### Clean Function Design Principles
@@ -700,85 +689,47 @@ public class ProductFunction
 
 ---
 
-## Code Quality Standards
+## Testing Strategy
 
-### SOLID Principles
-- **Single Responsibility**: Each class should have one reason to change
-- **Open/Closed**: Open for extension, closed for modification
-- **Liskov Substitution**: Derived classes must be substitutable for base classes
-- **Interface Segregation**: Clients shouldn't depend on interfaces they don't use
-- **Dependency Inversion**: Depend on abstractions, not concretions
+### Project Structure
+Mirror the main project structure in test project:
+```
+{ProjectName}.Tests/
+├── Functions/          # Function endpoint tests
+├── Services/           # Business logic tests
+├── Infrastructure/     # Infrastructure layer tests
+├── Helpers/           # Utility test classes
+├── Dtos/              # DTO validation tests
+└── Models/            # Model tests
+```
 
-### Error Handling
+### Testing Frameworks
+- **xUnit** - Primary testing framework
+- **FluentAssertions** - Assertion library
+- **FakeItEasy** - Mocking framework (as indicated by TestsBase)
+- **Microsoft.EntityFrameworkCore.InMemory** - In-memory database for unit tests
+
+### Test Naming Convention
 ```csharp
-public async Task<Result<User>> GetUserAsync(int id)
+[Fact]
+public async Task GetUserAsync_WithValidId_ReturnsUser()
 {
-    try
-    {
-        if (id <= 0)
-            return Result<User>.Failure("Invalid user ID");
-            
-        var user = await _repository.GetByIdAsync(id);
-        return user != null 
-            ? Result<User>.Success(user)
-            : Result<User>.Failure("User not found");
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error retrieving user with ID {UserId}", id);
-        return Result<User>.Failure("An error occurred while retrieving the user");
-    }
+    // Method_Scenario_ExpectedResult
+}
+
+[Theory]
+[InlineData(1, "John")]
+[InlineData(2, "Jane")]
+public async Task GetUserAsync_WithMultipleIds_ReturnsCorrectUsers(int id, string expectedName)
+{
+    // Theory tests for multiple inputs
 }
 ```
 
-### Logging Standards
-- Use structured logging with Microsoft.Extensions.Logging
-- Include correlation IDs for request tracking
-- Log at appropriate levels: Trace, Debug, Information, Warning, Error, Critical
-- Include relevant context in log messages
-
-### Performance Guidelines
-- Use async/await for I/O operations
-- Implement caching for frequently accessed data
-- Use connection pooling for database connections
-- Implement pagination for large data sets
-- Use streaming for large file operations
-
----
-
-## Security Guidelines
-
-### Authentication & Authorization
-- Validate all input parameters
-- Implement proper CORS policies
-- Use HTTPS for all external communications
-
-### Data Protection
-- Sanitize HTML content using `HtmlSanitizer`
-- Validate and sanitize all user inputs
-- Use parameterized queries to prevent SQL injection
-- Encrypt sensitive data at rest and in transit
-
-### Secret Management
-- Store secrets in Azure Key Vault
-- Use managed identities when possible
-- Never commit secrets to source control
-- Rotate secrets regularly
-
----
-
-## Docker & Deployment
-
-### Dockerfile Standards
-- Use multi-stage builds for optimization
-- Follow least privilege principle
-- Minimize layer count
-- Use specific base image versions
-
-### Environment Variables
-- Use environment variables for configuration
-- Provide default values where appropriate
-- Document all required environment variables
+### Test Categories
+1. **Unit Tests**: Test individual components in isolation
+2. **API Tests**: End-to-end function testing
+3. **Smoke Tests**: Basic functionality verification
 
 ---
 
@@ -807,98 +758,5 @@ public async Task<Result<User>> GetUserAsync(int id)
 
 ---
 
-## Continuous Integration
-
-### Build Standards
-- All builds must pass without warnings
-- Run all tests before merging
-- Perform static code analysis
-- Generate code coverage reports
-
-### Quality Gates
-- Minimum 80% code coverage for new code
-- All critical and high-severity security issues must be resolved
-- Performance benchmarks must be met
-- All integration tests must pass
-
----
-
-## Additional Considerations
-
-### Monitoring & Observability
-- Implement Application Insights integration
-- Add custom metrics for business operations
-- Create dashboards for key performance indicators
-- Set up alerting for critical failures
-
-### Scalability
-- Design for horizontal scaling
-- Implement circuit breaker patterns
-- Use async patterns throughout
-- Consider implementing CQRS for complex read/write scenarios
-
-### Maintenance
-- Regular dependency updates
-- Database migration reviews
-- Performance monitoring and optimization
-- Security vulnerability assessments
-
----
-
-## Questions for Improvement
-
-1. **API Versioning**: How do you handle API versioning in your Azure Functions?
-2. **Event-Driven Architecture**: Are you using Event Grid, Service Bus, or other messaging patterns?
-3. **Background Processing**: Do you need guidelines for timer-triggered functions or queue processing?
-4. **Cross-Cutting Concerns**: What patterns do you use for concerns like auditing, caching, and rate limiting?
-5. **Database Patterns**: Do you use any specific patterns like CQRS, Event Sourcing, or Domain Events?
-6. **Integration Patterns**: How do you handle integration with external services and APIs?
-7. **Deployment Strategies**: What deployment patterns do you follow (blue-green, canary, etc.)?
-8. **Monitoring and Alerting**: What specific monitoring and alerting strategies should be included?
-
----
-
-## Entity Framework Improvements Summary
-
-### Key Architectural Patterns Implemented
-
-| **Pattern** | **Purpose** | **Benefits** |
-|-------------|-------------|--------------|
-| **Specialized Repositories** | Entity-specific querying with DTO projections | Better performance, cleaner code separation |
-| **Query Extensions** | Reusable, composable query filters | DRY principle, consistent filtering logic |
-| **Mapping Extensions** | Fluent entity-DTO conversion | Clean, testable mapping logic |
-| **Configuration Separation** | Entity configurations in dedicated classes | Better organization, maintainability |
-| **Direct DTO Projection** | Query directly to DTOs instead of entities | Improved performance, reduced memory usage |
-
-### Performance Benefits
-
-1. **Direct DTO Projection** - Eliminates entity tracking overhead
-2. **Specialized Queries** - Optimized for specific use cases
-3. **Composable Filtering** - Database-level filtering with proper indexing
-4. **Reduced Data Transfer** - Only load required fields
-5. **Better Caching** - DTOs are more cache-friendly than entities
-
-### Implementation Checklist
-
-When implementing new entities, ensure:
-
-- [ ] **Entity Configuration** - Create `IEntityTypeConfiguration<T>` class
-- [ ] **Specialized Repository** - Create entity-specific repository with DTO projections
-- [ ] **Query Extensions** - Add filtering/sorting extensions for common operations
-- [ ] **Mapping Extensions** - Create fluent mapping methods (`.ToDto()`, `.ToEntity()`, `.UpdateFromDto()`)
-- [ ] **Service Registration** - Register all repositories and services in DI container
-- [ ] **Performance Indexes** - Add database indexes for filtering and sorting fields
-- [ ] **Unit Tests** - Test repository methods and mapping extensions
-
-### Code Quality Standards
-
-- **Always prefer interfaces** over concrete types in dependencies
-- **Use async/await** for all database operations
-- **Implement pagination** for all list queries
-- **Add proper error handling** with Result pattern
-- **Use FluentValidation** for input validation
-- **Maintain separation of concerns** across layers
-
----
 
 *This document should be treated as a living document and updated as the project evolves and new patterns emerge.*

@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "ConnectionStrings__DefaultConnection": "Host=localhost;Database=productmanagement;Username=postgres;Password=postgres;Port=5432",
+    "ConnectionStrings__RedisConnection": "localhost:6379",
+    "FeatureFlags__EnableAdvancedLogging": "true",
+    "FeatureFlags__UseRedisCache": "true"
+  }
+}

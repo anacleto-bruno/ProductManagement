@@ -1,48 +1,31 @@
 # Product Requirements Document (PRD) – Expanded into Epics
 
-## Epic 1: Backend API & Database Foundation
+## Epic 1: Database Foundation
 **Goal:** Provide a scalable, maintainable backend with a normalized relational schema.  
 
 ### Features
 - Design PostgreSQL schema for **Products**, **Colors**, **Sizes**  
 - Implement **ActiveRecord migrations** for schema creation and updates  
-- Establish Docker setup for .Net Core Azure Functions + PostgreSQL  
-- Seed database with sample products (1000+ records for testing)
-
-### Architecture Patterns
-
-#### Clean Architecture
-Maintain clear separation of concerns across layers:
-
-```
-{ProjectName}/
-├── Functions/          # Azure Function endpoints (Presentation Layer)
-├── Services/           # Business logic (Application Layer)
-├── Infrastructure/     # External concerns (Infrastructure Layer)
-├── Entities/          # Domain models (Domain Layer)
-├── Dtos/              # Data Transfer Objects
-├── Models/            # View models and request/response models
-├── Helpers/           # Utility classes and extensions
-├── Constants/         # Application constants
-└── Enumerations/      # Enum definitions
-```
+- Establish Docker setup PostgreSQL server and database
 
 ### Acceptance Criteria
 - Database containers start with `docker-compose up`  
-- Schema supports all required product attributes (name, description, brand, SKU, etc.)  
-- Many-to-many relationships for product–color and product–size are implemented  
+- Schema supports all required product attributes (name, description, model, brand, SKU, price, color, size)
+- Many-to-many relationships for product–color, product–size, brand are implemented  
 - Documentation includes database ERD and migration steps  
 
 ---
 
 ## Epic 2: Backend CRUD API
-**Goal:** Provide basic product management endpoints.  
+**Goal:** Provide CRUD product management endpoints.  
 
 ### Features
+- Establish Docker setup for REST API system
 - `POST /products` → Create product  
-- `GET /products/:id` → Retrieve product by ID  
+- `GET /product/:id` → Retrieve product by ID  
 - `PUT /products/:id` → Update product  
 - `DELETE /products/:id` → Delete product  
+- `POST /products/seed/:num` → Seed database with sample products (1 < num < 1000 records for testing)
 
 ### Acceptance Criteria
 - Each endpoint validates required fields  
@@ -56,49 +39,41 @@ Maintain clear separation of concerns across layers:
 **Goal:** Efficiently retrieve lists of products with pagination.  
 
 ### Features
-- `GET /products` endpoint with `page` and `per_page` parameters  
+- `GET /products` endpoint with `page` and `pageSize` parameters  
 - Return response metadata (total count, current page, total pages)  
 - Ensure scalability with database indexing  
-
-### Acceptance Criteria
-- Pagination works with large dataset (1000+ products)  
-- Default `per_page` value defined (e.g., 20)  
-- Automated tests validate pagination correctness  
-
----
-
-## Epic 4: Dynamic Search & Filtering
-**Goal:** Allow users to search products across multiple fields.  
-
-### Features
-- `GET /products/search?q=<query>` endpoint  
 - Search across name, description, category, brand, SKU  
 - Apply pagination to search results  
 - Optimize query with indexes and caching (e.g., Redis)  
 
 ### Acceptance Criteria
+- Pagination works with large dataset (1000+ products)  
+- Default `pageSize` value defined (e.g., 20)  
+- Automated tests validate pagination correctness  
 - Typing a partial query returns relevant matches  
 - Response time <200ms for 1000+ records  
 - Caching layer improves repeat query performance  
 - Tests cover search scenarios  
 
-## Epic 5: Seed Database via API endpoint
+---
+
+## Epic 4: Seed Database via API endpoint
 **Goal:** Allow users to populate database with mock data 
 
 ### Features
-- `POST /products/seed?numRows=<rows>` endpoint  
-- Default for <rows> is 1000, mim=1, max=10000
+- `POST /products/seed/:rows` endpoint  
+- Default for <rows> is 100, mim=1, max=10000
 - Adds <rows> records of mocked data in the database 
 
 ### Acceptance Criteria
-- numRows when informed needs to be between 1 and 10000
-- numRows assumes the value 100 when not informed
+- rows when informed needs to be between 1 and 10000
+- rows assumes the value 100 when not informed
 - Database is populated with numRows of new products with mock date 
 - Mock data is meaninfull with the field and data type associade
 
 ---
 
-## Epic 6: Frontend Setup & Architecture
+## Epic 5: Frontend Setup & Architecture
 **Goal:** Provide a modern React SPA foundation.  
 
 ### Features
@@ -114,11 +89,11 @@ Maintain clear separation of concerns across layers:
 
 #### **Core Technologies**
 - **Frontend**: React 18.2 + TypeScript 5.5 (strict mode)
-- **Build System**: Vite with Module Federation
+- **Build System**: Vite
 - **State Management**: 
   - Zustand for client-side state
   - React Query (@tanstack/react-query) for server state
-- **UI Framework**: shadcn
+- **UI Framework**: Material UI
 - **Routing**: React Router v7
 - **Internationalization**: react-i18next
 - **Validation**: Zod for schema validation
@@ -132,7 +107,7 @@ Maintain clear separation of concerns across layers:
 
 ---
 
-## Epic 7: Product List & Pagination UI
+## Epic 6: Product List & Pagination UI
 **Goal:** Display paginated list of products in a table.  
 
 ### Features
@@ -141,18 +116,18 @@ Maintain clear separation of concerns across layers:
 - Add pagination controls linked to backend pagination  
 
 ### Acceptance Criteria
-- Initial load shows first page of products  
-- Pagination controls update table correctly  
+- Initial load shows table with first page of products (columns: name, description, model, brand, SKU, price, color, size)
+- Pagination controls update table correctly 
 - Loading and error states are handled gracefully  
 
 ---
 
-## Epic 8: Search UI & Integration
+## Epic 7: Search UI & Integration
 **Goal:** Provide a responsive search experience.  
 
 ### Features
 - Text input field for product search  
-- API calls to `/products/search` as user types  
+- API calls to `GET /products` as user types  
 - Update table results dynamically  
 
 ### Acceptance Criteria
@@ -162,7 +137,7 @@ Maintain clear separation of concerns across layers:
 
 ---
 
-## Epic 9: CRUD Operations in Frontend
+## Epic 8: CRUD Operations in Frontend
 **Goal:** Enable full product lifecycle management via UI.  
 
 ### Features
@@ -177,7 +152,7 @@ Maintain clear separation of concerns across layers:
 
 ---
 
-## Epic 10: Testing & Quality Assurance
+## Epic 9: Testing & Quality Assurance
 **Goal:** Ensure robust automated testing across backend and frontend.  
 
 ### Features
@@ -192,7 +167,7 @@ Maintain clear separation of concerns across layers:
 
 ---
 
-## Epic 11: Documentation & Developer Experience
+## Epic 10: Documentation & Developer Experience
 **Goal:** Provide clear, reproducible setup and usage documentation.  
 
 ### Features
@@ -207,16 +182,3 @@ Maintain clear separation of concerns across layers:
 - API usage documented with examples  
 
 ---
-
-## Epic 12: Performance & Scalability Enhancements
-**Goal:** Anticipate and mitigate real-world scaling concerns.  
-
-### Features
-- Add DB indexes on search-relevant fields  
-- Implement caching (Redis) for common queries  
-- Optimize API responses (e.g., JSON serialization)  
-
-### Acceptance Criteria
-- Performance benchmark meets <200ms average search response  
-- Indexed fields confirmed in schema  
-- Cache hit improves response time in repeated queries  

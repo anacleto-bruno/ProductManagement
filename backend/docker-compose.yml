@@ -1,69 +1,56 @@
 version: '3.8'
 
 services:
-  postgresql:
+  postgres:
     image: postgres:16-alpine
     container_name: productmanagement-postgres
+    restart: always
     environment:
       POSTGRES_DB: productmanagement
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres123
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
-    networks:
-      - productmanagement-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: productmanagement-redis
+    restart: always
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - productmanagement-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  productmanagement-api:
+  # Azure Functions API in Docker
+  api:
     build:
-      context: ./ProductManagement
+      context: .
       dockerfile: Dockerfile
     container_name: productmanagement-api
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Docker
-      - AzureWebJobsStorage=UseDevelopmentStorage=true
-      - FUNCTIONS_WORKER_RUNTIME=dotnet-isolated
-      - ConnectionStrings__DefaultConnection=Host=postgresql;Database=productmanagement;Username=postgres;Password=postgres123
-      - ConnectionStrings__RedisConnection=redis:6379
     ports:
       - "7071:80"
     depends_on:
-      postgresql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - productmanagement-network
-    volumes:
-      - ./ProductManagement:/app
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=productmanagement;Username=postgres;Password=postgres;Port=5432
+      - ConnectionStrings__RedisConnection=redis:6379
+      - ASPNETCORE_ENVIRONMENT=Development
+      - AzureWebJobsStorage=UseDevelopmentStorage=true
+      - AzureWebJobsScriptRoot=/home/site/wwwroot
+      - AzureFunctionsJobHost__Logging__Console__IsEnabled=true
 
 volumes:
   postgres_data:
-  redis_data:
-
-networks:
-  productmanagement-network:
-    driver: bridge

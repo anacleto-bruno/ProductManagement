@@ -2,9 +2,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductManagement", "backend\ProductManagement.csproj", "{C8A6F79F-88B4-AFAD-05C3-8C43509F9DC9}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProductManagement", "backend\ProductManagement\ProductManagement.csproj", "{16AF6772-4A6A-A4D3-02CA-62C3D8D9B5C6}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "obj", "obj", "{B2DA5284-8888-B510-F7CE-BDAC8A24F6D0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Debug", "Debug", "{32CCCD6E-5CDC-9BC3-C011-800B623D31ED}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net8.0", "net8.0", "{0177F72A-EE5D-4E9B-4494-26D671C50C83}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkerExtensions", "backend\obj\Debug\net8.0\WorkerExtensions\WorkerExtensions.csproj", "{C3740F5C-48F8-7A39-46C1-BF34FEC11683}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,18 +20,25 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{16AF6772-4A6A-A4D3-02CA-62C3D8D9B5C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{16AF6772-4A6A-A4D3-02CA-62C3D8D9B5C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{16AF6772-4A6A-A4D3-02CA-62C3D8D9B5C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{16AF6772-4A6A-A4D3-02CA-62C3D8D9B5C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C8A6F79F-88B4-AFAD-05C3-8C43509F9DC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C8A6F79F-88B4-AFAD-05C3-8C43509F9DC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C8A6F79F-88B4-AFAD-05C3-8C43509F9DC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C8A6F79F-88B4-AFAD-05C3-8C43509F9DC9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3740F5C-48F8-7A39-46C1-BF34FEC11683}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3740F5C-48F8-7A39-46C1-BF34FEC11683}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3740F5C-48F8-7A39-46C1-BF34FEC11683}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3740F5C-48F8-7A39-46C1-BF34FEC11683}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{16AF6772-4A6A-A4D3-02CA-62C3D8D9B5C6} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
+		{B2DA5284-8888-B510-F7CE-BDAC8A24F6D0} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
+		{32CCCD6E-5CDC-9BC3-C011-800B623D31ED} = {B2DA5284-8888-B510-F7CE-BDAC8A24F6D0}
+		{0177F72A-EE5D-4E9B-4494-26D671C50C83} = {32CCCD6E-5CDC-9BC3-C011-800B623D31ED}
+		{C3740F5C-48F8-7A39-46C1-BF34FEC11683} = {0177F72A-EE5D-4E9B-4494-26D671C50C83}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {5EB3D8F0-6061-48FA-98DF-3336DE9CC096}
+		SolutionGuid = {2543759A-0C15-4FE1-90A2-F009900688FA}
 	EndGlobalSection
 EndGlobal

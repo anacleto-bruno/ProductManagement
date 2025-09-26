@@ -188,5 +188,79 @@ public class ProductService : IProductService
         }
     }
 
+    public async Task<Result<List<ProductResponseDto>>> SeedAsync(int count)
+    {
+        try
+        {
+            if (count < 1 || count > 10000)
+                return Result<List<ProductResponseDto>>.Failure("Count must be between 1 and 10,000");
 
+            var colors = await _productRepository.GetColorsAsync();
+            var sizes = await _productRepository.GetSizesAsync();
+
+            if (!colors.Any() || !sizes.Any())
+                return Result<List<ProductResponseDto>>.Failure("Colors or sizes not available. Please ensure database is properly seeded with reference data.");
+
+            var faker = new Faker<Product>()
+                .RuleFor(p => p.Name, f => f.Commerce.ProductName())
+                .RuleFor(p => p.Description, f => f.Commerce.ProductDescription())
+                .RuleFor(p => p.Model, f => f.Vehicle.Model())
+                .RuleFor(p => p.Brand, f => f.Company.CompanyName())
+                .RuleFor(p => p.Sku, f => f.Commerce.Ean13())
+                .RuleFor(p => p.Price, f => f.Random.Decimal(10, 1000))
+                .RuleFor(p => p.Category, f => f.Commerce.Categories(1).First())
+                .RuleFor(p => p.CreatedAt, f => f.Date.Past(1))
+                .RuleFor(p => p.UpdatedAt, (f, p) => p.CreatedAt.AddDays(f.Random.Int(0, 30)));
+
+            var products = faker.Generate(count);
+            var results = new List<ProductResponseDto>();
+
+            foreach (var product in products)
+            {
+                // Ensure unique SKU
+                while (await _productRepository.ExistsBySkuAsync(product.Sku))
+                {
+                    product.Sku = new Faker().Commerce.Ean13();
+                }
+
+                // Add random colors (1-3)
+                var randomColors = colors.OrderBy(x => Guid.NewGuid()).Take(new Random().Next(1, 4));
+                foreach (var color in randomColors)
+                {
+                    product.ProductColors.Add(new ProductColor
+                    {
+                        Product = product,
+                        ColorId = color.Id
+                    });
+                }
+
+                // Add random sizes (1-3)
+                var randomSizes = sizes.OrderBy(x => Guid.NewGuid()).Take(new Random().Next(1, 4));
+                foreach (var size in randomSizes)
+                {
+                    product.ProductSizes.Add(new ProductSize
+                    {
+                        Product = product,
+                        SizeId = size.Id,
+                        StockQuantity = new Random().Next(0, 100)
+                    });
+                }
+
+                var createdProduct = await _productRepository.AddAsync(product);
+                var responseDto = await _productRepository.GetProductDtoByIdAsync(createdProduct.Id);
+                if (responseDto != null)
+                {
+                    results.Add(responseDto);
+                }
+            }
+
+            _logger.LogInformation("Successfully seeded {Count} products", results.Count);
+            return Result<List<ProductResponseDto>>.Success(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error seeding {Count} products", count);
+            return Result<List<ProductResponseDto>>.Failure("An error occurred while seeding products");
+        }
+    }
 }

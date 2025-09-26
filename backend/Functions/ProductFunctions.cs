@@ -104,7 +104,7 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "products/{id:int}")] HttpRequestData req,
         int id)
     {
-        try
+        return await ExecuteSafelyAsync(req, async () =>
         {
             var updateRequest = await RequestHelper.ParseJsonBodyAsync<UpdateProductRequestDto>(req);
             
@@ -112,27 +112,17 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
             if (!validationResult.IsValid)
             {
                 var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                return await HttpResponseHelper.CreateValidationErrorResponseAsync(req, errors);
+                throw new ArgumentException(string.Join(", ", errors));
             }
 
             var result = await _productService.UpdateAsync(id, updateRequest);
             if (!result.IsSuccess)
             {
-                return await HttpResponseHelper.CreateErrorResponseAsync(req, result.ErrorMessage!, HttpStatusCode.BadRequest);
+                throw new ArgumentException(result.ErrorMessage);
             }
 
-            return await HttpResponseHelper.CreateJsonResponseAsync(req, result.Data);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning(ex, "Validation error in UpdateProduct");
-            return await HttpResponseHelper.CreateErrorResponseAsync(req, ex.Message, HttpStatusCode.BadRequest);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error in UpdateProduct");
-            return await HttpResponseHelper.CreateErrorResponseAsync(req, "An unexpected error occurred", HttpStatusCode.InternalServerError);
-        }
+            return result.Data;
+        });
     }
 
     [Function("DeleteProduct")]
@@ -151,5 +141,24 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
         });
     }
 
-
+    [Function("SeedProducts")]
+    public async Task<HttpResponseData> SeedAsync(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "products/seed/{count:int?}")] HttpRequestData req,
+        int? count)
+    {
+        return await ExecuteSafelyAsync(req, async () =>
+        {
+            var seedCount = count ?? 100; // Default to 100 if not provided
+            var result = await _productService.SeedAsync(seedCount);
+            if (!result.IsSuccess)
+            {
+                throw new ArgumentException(result.ErrorMessage);
+            }
+            return new { 
+                message = $"Successfully seeded {result.Data!.Count} products",
+                count = result.Data.Count,
+                products = result.Data
+            };
+        });
+    }
 }

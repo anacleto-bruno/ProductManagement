@@ -10,5 +10,6 @@ public interface IProductService
     Task<Result<ProductResponseDto>> CreateAsync(CreateProductRequestDto request);
     Task<Result<ProductResponseDto>> UpdateAsync(int id, UpdateProductRequestDto request);
     Task<Result> DeleteAsync(int id);
+    Task<Result<List<ProductResponseDto>>> SeedAsync(int count);
 
 }

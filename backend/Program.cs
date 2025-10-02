@@ -41,8 +41,27 @@ var host = new HostBuilder()
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IProductRepository, ProductRepository>();
 
+        // Redis Configuration (optional)
+        var redisConnectionString = context.Configuration["ConnectionStrings__Redis"] 
+            ?? context.Configuration["ConnectionStrings:Redis"];
+        
+        if (!string.IsNullOrEmpty(redisConnectionString))
+        {
+            try
+            {
+                services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(provider =>
+                    StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString));
+            }
+            catch (Exception ex)
+            {
+                // Log Redis connection failure but don't fail startup
+                Console.WriteLine($"Redis connection failed: {ex.Message}");
+            }
+        }
+
         // Business Services
         services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<IHealthCheckService, HealthCheckService>();
 
         // FluentValidation
         services.AddValidatorsFromAssemblyContaining<CreateProductRequestValidator>();

@@ -659,6 +659,94 @@ public class ProductFunction
 }
 ```
 
+### Function Implementation Patterns - Detailed Rules
+
+#### Rule 1: Always Use Base Class Methods
+**❌ NEVER do this:**
+```csharp
+[Function("GetProduct")]
+public async Task<HttpResponseData> GetAsync(HttpRequestData req)
+{
+    try 
+    {
+        // Manual implementation
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        // ... manual JSON, error handling, etc.
+    }
+    catch (Exception ex)
+    {
+        // Manual error handling
+    }
+}
+```
+
+**✅ ALWAYS do this:**
+```csharp
+[Function("GetProduct")]
+public async Task<HttpResponseData> GetAsync(HttpRequestData req)
+{
+    return await ExecuteSafelyAsync<ProductDto>(req, async () =>
+    {
+        return await _service.GetProductAsync(id);
+    });
+}
+```
+
+#### Rule 2: Choose the Right Base Method
+
+**For business data operations (most common):**
+```csharp
+// Use when returning business data - base class handles JSON serialization
+return await ExecuteSafelyAsync<TResponse>(req, async () => 
+{
+    return businessDataObject; // Returns POCO/DTO
+});
+```
+
+**For custom HTTP responses (health checks, file downloads, etc.):**
+```csharp
+// Use when you need custom status codes or response formats
+return await ExecuteSafelyAsync(req, async () => 
+{
+    var response = req.CreateResponse(customStatusCode);
+    // Custom response logic
+    return response; // Returns HttpResponseData
+});
+```
+
+#### Rule 3: Validation vs Non-Validation Functions
+
+**Functions WITH input validation:**
+```csharp
+public class ProductFunctions : BaseFunctionWithValidation<CreateProductDto, CreateProductValidator>
+{
+    [Function("CreateProduct")]
+    public async Task<HttpResponseData> CreateAsync(HttpRequestData req)
+    {
+        return await ExecuteWithValidationAsync<ProductDto>(req, async (validatedInput) =>
+        {
+            return await _service.CreateAsync(validatedInput);
+        });
+    }
+}
+```
+
+**Functions WITHOUT input validation:**
+```csharp
+public class ProductFunctions : BaseFunction
+{
+    [Function("GetProduct")]
+    public async Task<HttpResponseData> GetAsync(HttpRequestData req)
+    {
+        return await ExecuteSafelyAsync<ProductDto>(req, async () =>
+        {
+            var id = int.Parse(req.Query["id"]);
+            return await _service.GetAsync(id);
+        });
+    }
+}
+```
+
 ### Code Reduction Benefits
 - **Eliminate 60-80% of boilerplate code** in function implementations
 - **Centralize error handling** - no need for try-catch in every function

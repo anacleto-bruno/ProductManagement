@@ -34,6 +34,25 @@ public abstract class BaseFunction
             return await HttpResponseHelper.CreateErrorResponseAsync(request, "An unexpected error occurred", HttpStatusCode.InternalServerError);
         }
     }
+
+    protected async Task<HttpResponseData> ExecuteSafelyAsync(
+        HttpRequestData request, Func<Task<HttpResponseData>> handler)
+    {
+        try
+        {
+            return await handler();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Validation error in {FunctionName}", GetType().Name);
+            return await HttpResponseHelper.CreateErrorResponseAsync(request, ex.Message, HttpStatusCode.BadRequest);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in {FunctionName}", GetType().Name);
+            return await HttpResponseHelper.CreateErrorResponseAsync(request, "An unexpected error occurred", HttpStatusCode.InternalServerError);
+        }
+    }
 }
 
 public abstract class BaseFunctionWithValidation<TRequest, TValidator> : BaseFunction

@@ -9,8 +9,11 @@ using Microsoft.OpenApi.Models;
 using ProductManagement.infrastructure;
 using ProductManagement.infrastructure.repositories;
 using ProductManagement.services;
+using ProductManagement.services.caching;
+using ProductManagement.services.decorators;
 using ProductManagement.validators;
 using FluentValidation;
+using Microsoft.Extensions.Logging;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
@@ -45,12 +48,23 @@ var host = new HostBuilder()
         var redisConnectionString = context.Configuration["ConnectionStrings__Redis"] 
             ?? context.Configuration["ConnectionStrings:Redis"];
         
+        // Cache services (register NoOp fallback; override with Redis below if available)
+        services.AddSingleton<ICacheService, NoOpCacheService>();
+
         if (!string.IsNullOrEmpty(redisConnectionString))
         {
             try
             {
                 services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(provider =>
                     StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString));
+                
+                // Replace NoOp cache with Redis-backed implementation
+                services.AddSingleton<ICacheService>(provider =>
+                {
+                    var mux = provider.GetRequiredService<StackExchange.Redis.IConnectionMultiplexer>();
+                    var logger = provider.GetRequiredService<ILogger<RedisCacheService>>();
+                    return new RedisCacheService(mux, logger);
+                });
             }
             catch (Exception ex)
             {
@@ -59,8 +73,15 @@ var host = new HostBuilder()
             }
         }
 
-        // Business Services
-        services.AddScoped<IProductService, ProductService>();
+        // Business Services (register concrete then decorated interface)
+        services.AddScoped<ProductService>();
+        services.AddScoped<IProductService>(sp =>
+        {
+            var inner = sp.GetRequiredService<ProductService>();
+            var cache = sp.GetRequiredService<ICacheService>();
+            var logger = sp.GetRequiredService<ILogger<CachedProductService>>();
+            return new CachedProductService(inner, cache, logger);
+        });
         services.AddScoped<IHealthCheckService, HealthCheckService>();
 
         // FluentValidation

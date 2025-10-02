@@ -6,6 +6,8 @@
     "ConnectionStrings__DefaultConnection": "Host=localhost;Database=productmanagement;Username=postgres;Password=postgres;Port=5432",
     "ConnectionStrings__RedisConnection": "localhost:6379",
     "FeatureFlags__EnableAdvancedLogging": "true",
-    "FeatureFlags__UseRedisCache": "true"
+    "FeatureFlags__UseRedisCache": "true",
+    "Cache__DefaultTtl": "00:05:00",
+    "Cache__Enabled": "true"
   }
 }

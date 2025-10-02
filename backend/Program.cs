@@ -14,6 +14,7 @@ using ProductManagement.services.decorators;
 using ProductManagement.validators;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
@@ -48,6 +49,9 @@ var host = new HostBuilder()
         var redisConnectionString = context.Configuration["ConnectionStrings__Redis"] 
             ?? context.Configuration["ConnectionStrings:Redis"];
         
+        // Configure cache options
+        services.Configure<CacheOptions>(context.Configuration.GetSection(CacheOptions.SectionName));
+        
         // Cache services (register NoOp fallback; override with Redis below if available)
         services.AddSingleton<ICacheService, NoOpCacheService>();
 
@@ -80,7 +84,8 @@ var host = new HostBuilder()
             var inner = sp.GetRequiredService<ProductService>();
             var cache = sp.GetRequiredService<ICacheService>();
             var logger = sp.GetRequiredService<ILogger<CachedProductService>>();
-            return new CachedProductService(inner, cache, logger);
+            var cacheOptions = sp.GetRequiredService<IOptions<CacheOptions>>();
+            return new CachedProductService(inner, cache, logger, cacheOptions);
         });
         services.AddScoped<IHealthCheckService, HealthCheckService>();
 

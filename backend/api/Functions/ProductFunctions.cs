@@ -4,7 +4,6 @@ using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using ProductManagement.dtos;
-using ProductManagement.functions.@base;
 using ProductManagement.helpers;
 using ProductManagement.models;
 using ProductManagement.services;
@@ -13,9 +12,11 @@ using System.Net;
 
 namespace ProductManagement.functions;
 
-public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestDto, CreateProductRequestValidator>
+public class ProductFunctions
 {
+    private readonly ILogger<ProductFunctions> _logger;
     private readonly IProductService _productService;
+    private readonly CreateProductRequestValidator _createValidator;
     private readonly UpdateProductRequestValidator _updateValidator;
     private readonly PaginationRequestValidator _paginationValidator;
 
@@ -24,10 +25,11 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
         IProductService productService,
         CreateProductRequestValidator createValidator,
         UpdateProductRequestValidator updateValidator,
-        PaginationRequestValidator paginationValidator) 
-        : base(logger, createValidator)
+        PaginationRequestValidator paginationValidator)
     {
+        _logger = logger;
         _productService = productService;
+        _createValidator = createValidator;
         _updateValidator = updateValidator;
         _paginationValidator = paginationValidator;
     }
@@ -42,15 +44,28 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products/{id:int}")] HttpRequestData req,
         int id)
     {
-        return await ExecuteSafelyAsync(req, async () =>
+        _logger.LogInformation("Getting product with ID: {ProductId}", id);
+
+        if (id <= 0)
         {
-            var result = await _productService.GetByIdAsync(id);
-            if (!result.IsSuccess)
-            {
-                throw new ArgumentException(result.ErrorMessage);
-            }
-            return result.Data;
-        });
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteAsJsonAsync(new { error = "Product ID must be greater than 0" });
+            return badResponse;
+        }
+
+        var result = await _productService.GetByIdAsync(id);
+        
+        if (!result.IsSuccess)
+        {
+            _logger.LogWarning("Product not found: {ProductId}", id);
+            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            await notFoundResponse.WriteAsJsonAsync(new { error = result.ErrorMessage });
+            return notFoundResponse;
+        }
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(result.Data);
+        return response;
     }
 
     [Function("GetProducts")]
@@ -68,38 +83,48 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
     public async Task<HttpResponseData> GetPagedAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products")] HttpRequestData req)
     {
-        return await ExecuteSafelyAsync(req, async () =>
+        _logger.LogInformation("Getting paginated products");
+
+        // Parse query parameters
+        var query = RequestHelper.ParseQueryString(req.Url.Query);
+        
+        var paginationRequest = new PaginationRequestDto
         {
-            // Parse query parameters
-            var query = RequestHelper.ParseQueryString(req.Url.Query);
+            Page = query.TryGetValue("page", out var pageStr) && int.TryParse(pageStr, out var page) ? page : 1,
+            PageSize = query.TryGetValue("pageSize", out var pageSizeStr) && int.TryParse(pageSizeStr, out var pageSize) ? pageSize : 20,
+            SearchTerm = query.TryGetValue("searchTerm", out var searchTerm) ? searchTerm : null,
+            Category = query.TryGetValue("category", out var category) ? category : null,
+            MinPrice = query.TryGetValue("minPrice", out var minPriceStr) && decimal.TryParse(minPriceStr, out var minPrice) ? minPrice : null,
+            MaxPrice = query.TryGetValue("maxPrice", out var maxPriceStr) && decimal.TryParse(maxPriceStr, out var maxPrice) ? maxPrice : null,
+            SortBy = query.TryGetValue("sortBy", out var sortBy) ? sortBy : null,
+            Descending = query.TryGetValue("descending", out var descendingStr) && bool.TryParse(descendingStr, out var desc) && desc
+        };
+
+        // Validate pagination request
+        var validationResult = await _paginationValidator.ValidateAsync(paginationRequest);
+        if (!validationResult.IsValid)
+        {
+            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            _logger.LogWarning("Pagination validation failed: {Errors}", string.Join(", ", errors));
             
-            var paginationRequest = new PaginationRequestDto
-            {
-                Page = query.TryGetValue("page", out var pageStr) && int.TryParse(pageStr, out var page) ? page : 1,
-                PageSize = query.TryGetValue("pageSize", out var pageSizeStr) && int.TryParse(pageSizeStr, out var pageSize) ? pageSize : 20,
-                SearchTerm = query.TryGetValue("searchTerm", out var searchTerm) ? searchTerm : null,
-                Category = query.TryGetValue("category", out var category) ? category : null,
-                MinPrice = query.TryGetValue("minPrice", out var minPriceStr) && decimal.TryParse(minPriceStr, out var minPrice) ? minPrice : null,
-                MaxPrice = query.TryGetValue("maxPrice", out var maxPriceStr) && decimal.TryParse(maxPriceStr, out var maxPrice) ? maxPrice : null,
-                SortBy = query.TryGetValue("sortBy", out var sortBy) ? sortBy : null,
-                Descending = query.TryGetValue("descending", out var descendingStr) && bool.TryParse(descendingStr, out var desc) && desc
-            };
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteAsJsonAsync(new { errors });
+            return badResponse;
+        }
 
-            // Validate pagination request
-            var validationResult = await _paginationValidator.ValidateAsync(paginationRequest);
-            if (!validationResult.IsValid)
-            {
-                var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                throw new ArgumentException(string.Join(", ", errors));
-            }
+        var result = await _productService.GetPagedAsync(paginationRequest);
+        
+        if (!result.IsSuccess)
+        {
+            _logger.LogError("Failed to get paginated products: {Error}", result.ErrorMessage);
+            var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await errorResponse.WriteAsJsonAsync(new { error = result.ErrorMessage });
+            return errorResponse;
+        }
 
-            var result = await _productService.GetPagedAsync(paginationRequest);
-            if (!result.IsSuccess)
-            {
-                throw new ArgumentException(result.ErrorMessage);
-            }
-            return result.Data;
-        });
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(result.Data);
+        return response;
     }
 
     [Function("CreateProduct")]
@@ -111,15 +136,36 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
     public async Task<HttpResponseData> CreateAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "products")] HttpRequestData req)
     {
-        return await ExecuteWithValidationAsync<object>(req, async createRequest =>
+        _logger.LogInformation("Creating new product");
+
+        var createRequest = await RequestHelper.ParseJsonBodyAsync<CreateProductRequestDto>(req);
+        
+        // Validate request
+        var validationResult = await _createValidator.ValidateAsync(createRequest);
+        if (!validationResult.IsValid)
         {
-            var result = await _productService.CreateAsync(createRequest);
-            if (!result.IsSuccess)
-            {
-                throw new ArgumentException(result.ErrorMessage);
-            }
-            return result.Data!;
-        });
+            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            _logger.LogWarning("Product creation validation failed: {Errors}", string.Join(", ", errors));
+            
+            var badResponse = req.CreateResponse(HttpStatusCode.UnprocessableEntity);
+            await badResponse.WriteAsJsonAsync(new { errors });
+            return badResponse;
+        }
+
+        var result = await _productService.CreateAsync(createRequest);
+        
+        if (!result.IsSuccess)
+        {
+            _logger.LogError("Failed to create product: {Error}", result.ErrorMessage);
+            var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await errorResponse.WriteAsJsonAsync(new { error = result.ErrorMessage });
+            return errorResponse;
+        }
+
+        _logger.LogInformation("Product created successfully with ID: {ProductId}", result.Data!.Id);
+        var response = req.CreateResponse(HttpStatusCode.Created);
+        await response.WriteAsJsonAsync(result.Data);
+        return response;
     }
 
     [Function("UpdateProduct")]
@@ -134,25 +180,48 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "products/{id:int}")] HttpRequestData req,
         int id)
     {
-        return await ExecuteSafelyAsync(req, async () =>
+        _logger.LogInformation("Updating product with ID: {ProductId}", id);
+
+        if (id <= 0)
         {
-            var updateRequest = await RequestHelper.ParseJsonBodyAsync<UpdateProductRequestDto>(req);
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteAsJsonAsync(new { error = "Product ID must be greater than 0" });
+            return badResponse;
+        }
+
+        var updateRequest = await RequestHelper.ParseJsonBodyAsync<UpdateProductRequestDto>(req);
+        
+        // Validate request
+        var validationResult = await _updateValidator.ValidateAsync(updateRequest);
+        if (!validationResult.IsValid)
+        {
+            var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            _logger.LogWarning("Product update validation failed for ID {ProductId}: {Errors}", id, string.Join(", ", errors));
             
-            var validationResult = await _updateValidator.ValidateAsync(updateRequest);
-            if (!validationResult.IsValid)
-            {
-                var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-                throw new ArgumentException(string.Join(", ", errors));
-            }
+            var badResponse = req.CreateResponse(HttpStatusCode.UnprocessableEntity);
+            await badResponse.WriteAsJsonAsync(new { errors });
+            return badResponse;
+        }
 
-            var result = await _productService.UpdateAsync(id, updateRequest);
-            if (!result.IsSuccess)
-            {
-                throw new ArgumentException(result.ErrorMessage);
-            }
+        var result = await _productService.UpdateAsync(id, updateRequest);
+        
+        if (!result.IsSuccess)
+        {
+            _logger.LogWarning("Failed to update product {ProductId}: {Error}", id, result.ErrorMessage);
+            
+            var statusCode = result.ErrorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? HttpStatusCode.NotFound 
+                : HttpStatusCode.BadRequest;
+                
+            var errorResponse = req.CreateResponse(statusCode);
+            await errorResponse.WriteAsJsonAsync(new { error = result.ErrorMessage });
+            return errorResponse;
+        }
 
-            return result.Data;
-        });
+        _logger.LogInformation("Product updated successfully: {ProductId}", id);
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(result.Data);
+        return response;
     }
 
     [Function("DeleteProduct")]
@@ -165,15 +234,34 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "products/{id:int}")] HttpRequestData req,
         int id)
     {
-        return await ExecuteSafelyAsync(req, async () =>
+        _logger.LogInformation("Deleting product with ID: {ProductId}", id);
+
+        if (id <= 0)
         {
-            var result = await _productService.DeleteAsync(id);
-            if (!result.IsSuccess)
-            {
-                throw new ArgumentException(result.ErrorMessage);
-            }
-            return new { message = "Product deleted successfully" };
-        });
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteAsJsonAsync(new { error = "Product ID must be greater than 0" });
+            return badResponse;
+        }
+
+        var result = await _productService.DeleteAsync(id);
+        
+        if (!result.IsSuccess)
+        {
+            _logger.LogWarning("Failed to delete product {ProductId}: {Error}", id, result.ErrorMessage);
+            
+            var statusCode = result.ErrorMessage?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
+                ? HttpStatusCode.NotFound 
+                : HttpStatusCode.BadRequest;
+                
+            var errorResponse = req.CreateResponse(statusCode);
+            await errorResponse.WriteAsJsonAsync(new { error = result.ErrorMessage });
+            return errorResponse;
+        }
+
+        _logger.LogInformation("Product deleted successfully: {ProductId}", id);
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(new { message = "Product deleted successfully" });
+        return response;
     }
 
     [Function("SeedProducts")]
@@ -185,19 +273,33 @@ public class ProductFunctions : BaseFunctionWithValidation<CreateProductRequestD
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "products/seed/{count:int?}")] HttpRequestData req,
         int? count)
     {
-        return await ExecuteSafelyAsync(req, async () =>
+        var seedCount = count ?? 100; // Default to 100 if not provided
+        _logger.LogInformation("Seeding {Count} products", seedCount);
+
+        if (seedCount <= 0 || seedCount > 10000)
         {
-            var seedCount = count ?? 100; // Default to 100 if not provided
-            var result = await _productService.SeedAsync(seedCount);
-            if (!result.IsSuccess)
-            {
-                throw new ArgumentException(result.ErrorMessage);
-            }
-            return new { 
-                message = $"Successfully seeded {result.Data!.Count} products",
-                count = result.Data.Count,
-                products = result.Data
-            };
+            var badResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await badResponse.WriteAsJsonAsync(new { error = "Count must be between 1 and 10,000" });
+            return badResponse;
+        }
+
+        var result = await _productService.SeedAsync(seedCount);
+        
+        if (!result.IsSuccess)
+        {
+            _logger.LogError("Failed to seed products: {Error}", result.ErrorMessage);
+            var errorResponse = req.CreateResponse(HttpStatusCode.BadRequest);
+            await errorResponse.WriteAsJsonAsync(new { error = result.ErrorMessage });
+            return errorResponse;
+        }
+
+        _logger.LogInformation("Successfully seeded {Count} products", result.Data!.Count);
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(new { 
+            message = $"Successfully seeded {result.Data.Count} products",
+            count = result.Data.Count,
+            products = result.Data
         });
+        return response;
     }
 }

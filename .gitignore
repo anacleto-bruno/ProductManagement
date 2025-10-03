@@ -277,6 +277,8 @@ appsettings.Local.json
 coverage/
 *.coverage
 *.coveragexml
+coverage-html/
+coverage-results/
 
 # SonarQube
 .sonarqube/

@@ -48,6 +48,7 @@ reportgenerator `
     -targetdir:"$htmlDir" `
     -reporttypes:"Html;HtmlSummary;Badges" `
     -sourcedirs:"..\api" `
+    -filefilters:"-**/Migrations/**" `
     -title:"Product Management API - Test Coverage"
 
 if ($LASTEXITCODE -ne 0) {

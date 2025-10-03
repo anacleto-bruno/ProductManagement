@@ -2,10 +2,12 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 
 namespace ProductManagement.functions;
 
+[ExcludeFromCodeCoverage]
 public class SwaggerUIFunction
 {
     private readonly ILogger<SwaggerUIFunction> _logger;

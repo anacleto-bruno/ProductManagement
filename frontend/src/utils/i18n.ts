@@ -23,6 +23,7 @@ const resources = {
       page: 'Page',
       of: 'of',
       rows: 'rows',
+      found: 'found',
     },
     products: {
       title: 'Products',

@@ -111,6 +111,7 @@
 **Goal:** Display paginated list of products in a table.  
 
 ### Features
+- API documentation acessible at http://localhost:7071/api/swagger.json
 - Fetch products via `GET /products` on initial load  
 - Render results in Material UI Table  
 - Add pagination controls linked to backend pagination  

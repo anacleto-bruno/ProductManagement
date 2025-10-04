@@ -4,6 +4,8 @@ using ProductManagement.entities;
 using ProductManagement.helpers;
 using ProductManagement.infrastructure.repositories;
 using ProductManagement.models;
+using ProductManagement.validators;
+using FluentValidation;
 using Bogus;
 
 namespace ProductManagement.services;
@@ -12,11 +14,22 @@ public class ProductService : IProductService
 {
     private readonly IProductRepository _productRepository;
     private readonly ILogger<ProductService> _logger;
+    private readonly CreateProductRequestValidator _createValidator;
+    private readonly UpdateProductRequestValidator _updateValidator;
+    private readonly PaginationRequestValidator _paginationValidator;
 
-    public ProductService(IProductRepository productRepository, ILogger<ProductService> logger)
+    public ProductService(
+        IProductRepository productRepository, 
+        ILogger<ProductService> logger,
+        CreateProductRequestValidator createValidator,
+        UpdateProductRequestValidator updateValidator,
+        PaginationRequestValidator paginationValidator)
     {
         _productRepository = productRepository;
         _logger = logger;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
+        _paginationValidator = paginationValidator;
     }
 
     public async Task<Result<ProductResponseDto>> GetByIdAsync(int id)
@@ -42,6 +55,15 @@ public class ProductService : IProductService
     {
         try
         {
+            // Validate pagination request
+            var validationResult = await _paginationValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+            {
+                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                _logger.LogWarning("Pagination validation failed: {Errors}", errors);
+                return Result<PagedResultDto<ProductSummaryDto>>.Failure($"Validation failed: {errors}");
+            }
+
             var result = await _productRepository.GetProductDtosAsync(request);
             return Result<PagedResultDto<ProductSummaryDto>>.Success(result);
         }
@@ -56,6 +78,15 @@ public class ProductService : IProductService
     {
         try
         {
+            // Validate create request
+            var validationResult = await _createValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+            {
+                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                _logger.LogWarning("Product creation validation failed: {Errors}", errors);
+                return Result<ProductResponseDto>.Failure($"Validation failed: {errors}");
+            }
+
             // Check if SKU already exists
             if (await _productRepository.ExistsBySkuAsync(request.Sku))
             {
@@ -112,6 +143,15 @@ public class ProductService : IProductService
     {
         try
         {
+            // Validate update request
+            var validationResult = await _updateValidator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+            {
+                var errors = string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage));
+                _logger.LogWarning("Product update validation failed for ID {ProductId}: {Errors}", id, errors);
+                return Result<ProductResponseDto>.Failure($"Validation failed: {errors}");
+            }
+
             var product = await _productRepository.GetByIdAsync(id);
             if (product == null)
                 return Result<ProductResponseDto>.Failure("Product not found");

@@ -3,21 +3,22 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
-using ProductManagement.functions.@base;
+using ProductManagement.helpers;
 using ProductManagement.services;
 using System.Net;
 
 namespace ProductManagement.functions;
 
-public class HealthCheckFunction : BaseFunction
+public class HealthCheckFunction
 {
+    private readonly ILogger<HealthCheckFunction> _logger;
     private readonly IHealthCheckService _healthCheckService;
 
     public HealthCheckFunction(
         ILogger<HealthCheckFunction> logger,
-        IHealthCheckService healthCheckService) 
-        : base(logger)
+        IHealthCheckService healthCheckService)
     {
+        _logger = logger;
         _healthCheckService = healthCheckService;
     }
 
@@ -29,33 +30,23 @@ public class HealthCheckFunction : BaseFunction
     public async Task<HttpResponseData> GetHealthAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
     {
-        return await ExecuteSafelyAsync(req, async () =>
+        _logger.LogInformation("Health check requested");
+        
+        var healthResult = await _healthCheckService.CheckHealthAsync();
+        
+        // Log health check results
+        _logger.LogInformation("Health check completed: {Status} in {Duration}ms", 
+            healthResult.Status, healthResult.DurationMs);
+
+        // Return appropriate HTTP status based on health
+        var statusCode = healthResult.Status switch
         {
-            _logger.LogInformation("Health check requested");
-            
-            var healthResult = await _healthCheckService.CheckHealthAsync();
-            
-            // Log health check results
-            _logger.LogInformation("Health check completed: {Status} in {Duration}ms", 
-                healthResult.Status, healthResult.DurationMs);
+            "Healthy" => HttpStatusCode.OK,
+            "Degraded" => HttpStatusCode.PartialContent,
+            _ => HttpStatusCode.ServiceUnavailable
+        };
 
-            // Return appropriate HTTP status based on health
-            var statusCode = healthResult.Status switch
-            {
-                "Healthy" => HttpStatusCode.OK,
-                "Degraded" => HttpStatusCode.PartialContent,
-                _ => HttpStatusCode.ServiceUnavailable
-            };
-
-            var response = req.CreateResponse(statusCode);
-            response.Headers.Add("Content-Type", "application/json");
-            
-            // Manual JSON serialization to avoid complex object serialization issues
-            var json = System.Text.Json.JsonSerializer.Serialize(healthResult);
-            await response.WriteStringAsync(json);
-            
-            return response;
-        });
+        return await HttpResponseHelper.CreateJsonResponseAsync(req, healthResult, statusCode);
     }
 
     [Function("HealthCheckReady")]
@@ -65,25 +56,17 @@ public class HealthCheckFunction : BaseFunction
     public async Task<HttpResponseData> GetReadinessAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health/ready")] HttpRequestData req)
     {
-        return await ExecuteSafelyAsync(req, async () =>
-        {
-            var healthResult = await _healthCheckService.CheckHealthAsync();
-            
-            // For readiness, we only care about critical dependencies (database)
-            var isDatabaseHealthy = healthResult.Components.ContainsKey("database") && 
-                                   healthResult.Components["database"].Status == "Healthy";
+        var healthResult = await _healthCheckService.CheckHealthAsync();
+        
+        // For readiness, we only care about critical dependencies (database)
+        var isDatabaseHealthy = healthResult.Components.ContainsKey("database") && 
+                               healthResult.Components["database"].Status == "Healthy";
 
-            var statusCode = isDatabaseHealthy ? HttpStatusCode.OK : HttpStatusCode.ServiceUnavailable;
-            var status = isDatabaseHealthy ? "Ready" : "Not Ready";
+        var statusCode = isDatabaseHealthy ? HttpStatusCode.OK : HttpStatusCode.ServiceUnavailable;
+        var status = isDatabaseHealthy ? "Ready" : "Not Ready";
 
-            var response = req.CreateResponse(statusCode);
-            response.Headers.Add("Content-Type", "application/json");
-            
-            var json = System.Text.Json.JsonSerializer.Serialize(new { status, timestamp = DateTime.UtcNow });
-            await response.WriteStringAsync(json);
-            
-            return response;
-        });
+        return await HttpResponseHelper.CreateJsonResponseAsync(req, 
+            new { status, timestamp = DateTime.UtcNow }, statusCode);
     }
 
     [Function("HealthCheckLive")]
@@ -92,23 +75,14 @@ public class HealthCheckFunction : BaseFunction
     public async Task<HttpResponseData> GetLivenessAsync(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health/live")] HttpRequestData req)
     {
-        return await ExecuteSafelyAsync(req, async () =>
-        {
-            // Simple liveness check - if we can respond, we're alive
-            var uptimeMs = (DateTime.UtcNow - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds;
-            
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            response.Headers.Add("Content-Type", "application/json");
-            
-            var json = System.Text.Json.JsonSerializer.Serialize(new 
-            { 
-                status = "Alive", 
-                timestamp = DateTime.UtcNow,
-                uptimeMs = uptimeMs
-            });
-            await response.WriteStringAsync(json);
-            
-            return response;
+        // Simple liveness check - if we can respond, we're alive
+        var uptimeMs = (DateTime.UtcNow - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds;
+        
+        return await HttpResponseHelper.CreateJsonResponseAsync(req, new 
+        { 
+            status = "Alive", 
+            timestamp = DateTime.UtcNow,
+            uptimeMs = uptimeMs
         });
     }
 }

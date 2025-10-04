@@ -1,563 +1,239 @@
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using ProductManagement.dtos;
 using ProductManagement.functions;
 using ProductManagement.models;
 using ProductManagement.services;
-using ProductManagement.validators;
-using FluentAssertions;
+using ProductManagement.helpers;
+using ProductManagement.UnitTests.TestHelpers;
+using Microsoft.Azure.Functions.Worker.Http;
+using System.Net;
 
-namespace ProductManagement.Tests.Functions;
+namespace ProductManagement.UnitTests.Functions;
 
 public class ProductFunctionsTests
 {
-    private readonly Mock<ILogger<ProductFunctions>> _mockLogger;
-    private readonly Mock<IProductService> _mockProductService;
-    private readonly CreateProductRequestValidator _createValidator;
-    private readonly UpdateProductRequestValidator _updateValidator;  
-    private readonly PaginationRequestValidator _paginationValidator;
-    private readonly ProductFunctions _productFunctions;
+    private readonly Mock<ILogger<ProductFunctions>> _loggerMock = new();
+    private readonly Mock<IProductService> _serviceMock = new();
+    private readonly ProductFunctions _functions;
+    private readonly TestFunctionContext _context = new();
 
     public ProductFunctionsTests()
     {
-        _mockLogger = new Mock<ILogger<ProductFunctions>>();
-        _mockProductService = new Mock<IProductService>();
-        _createValidator = new CreateProductRequestValidator();
-        _updateValidator = new UpdateProductRequestValidator();
-        _paginationValidator = new PaginationRequestValidator();
-
-        _productFunctions = new ProductFunctions(
-            _mockLogger.Object,
-            _mockProductService.Object,
-            _createValidator,
-            _updateValidator,
-            _paginationValidator);
+        _functions = new ProductFunctions(_loggerMock.Object, _serviceMock.Object);
     }
 
-    #region Service Integration Tests
-
-    [Fact]
-    public async Task ProductService_GetByIdAsync_Success_CallsServiceCorrectly()
+    private static ProductResponseDto CreateProduct(int id = 1) => new()
     {
-        // Arrange
-        var productId = 1;
-        var expectedResult = Result<ProductResponseDto>.Success(new ProductResponseDto
-        {
-            Id = productId,
-            Name = "Test Product",
-            Sku = "TEST-001",
-            Price = 10.99m
-        });
+        Id = id,
+        Name = $"Product {id}",
+        Model = "M1",
+        Brand = "BrandX",
+        Sku = $"SKU{id}",
+        Price = 9.99m,
+        Category = "Cat"
+    };
 
-        _mockProductService.Setup(s => s.GetByIdAsync(productId))
-            .ReturnsAsync(expectedResult);
+    #region GetByIdAsync
+    [Fact]
+    public async Task GetByIdAsync_IdLessOrEqualZero_ReturnsBadRequest()
+    {
+        var request = new TestHttpRequestData(_context);
 
-        // Act
-        var result = await _mockProductService.Object.GetByIdAsync(productId);
+        var response = await _functions.GetByIdAsync(request, 0);
 
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeTrue();
-        result.Data!.Id.Should().Be(productId);
-        result.Data.Name.Should().Be("Test Product");
-        _mockProductService.Verify(s => s.GetByIdAsync(productId), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await ReadBodyAsync(response);
+        body.Should().Contain("Product ID must be greater than 0");
+        _serviceMock.Verify(x => x.GetByIdAsync(It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
-    public async Task ProductService_GetByIdAsync_Failure_ReturnsFailureResult()
+    public async Task GetByIdAsync_ProductFound_ReturnsOkWithProduct()
     {
-        // Arrange
-        var productId = 999;
-        var expectedResult = Result<ProductResponseDto>.Failure("Product not found");
+        var request = new TestHttpRequestData(_context);
+        var product = CreateProduct();
+        _serviceMock.Setup(s => s.GetByIdAsync(product.Id)).ReturnsAsync(Result<ProductResponseDto>.Success(product));
 
-        _mockProductService.Setup(s => s.GetByIdAsync(productId))
-            .ReturnsAsync(expectedResult);
+        var response = await _functions.GetByIdAsync(request, product.Id);
 
-        // Act
-        var result = await _mockProductService.Object.GetByIdAsync(productId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Product not found");
-        _mockProductService.Verify(s => s.GetByIdAsync(productId), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await ReadBodyAsync(response);
+        body.Should().Contain(product.Name);
+        _serviceMock.Verify(s => s.GetByIdAsync(product.Id), Times.Once);
     }
 
+    [Fact]
+    public async Task GetByIdAsync_NotFound_ReturnsNotFound()
+    {
+        var request = new TestHttpRequestData(_context);
+        _serviceMock.Setup(s => s.GetByIdAsync(42)).ReturnsAsync(Result<ProductResponseDto>.Failure("Product not found"));
+
+        var response = await _functions.GetByIdAsync(request, 42);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var body = await ReadBodyAsync(response);
+        body.Should().Contain("Product not found");
+    }
     #endregion
 
-    #region Pagination Service Tests
-
+    #region GetPagedAsync
     [Fact]
-    public async Task ProductService_GetPagedAsync_ValidRequest_ReturnsPagedResults()
+    public async Task GetPagedAsync_ReturnsPagedResult()
     {
-        // Arrange
-        var request = new PaginationRequestDto
+        var request = new TestHttpRequestData(_context, url: "https://localhost/products?page=2&pageSize=5&searchTerm=test&descending=true");
+        var paged = new PagedResultDto<ProductSummaryDto>
         {
-            Page = 1,
-            PageSize = 20,
-            SearchTerm = "laptop"
+            Page = 2,
+            PageSize = 5,
+            TotalCount = 12,
+            TotalPages = 3,
+            Data = new List<ProductSummaryDto>{ new(){ Id=1, Name="P1", Model="M", Brand="B", Sku="S", Price=1m } }
         };
+        _serviceMock.Setup(s => s.GetPagedAsync(It.Is<PaginationRequestDto>(p => p.Page==2 && p.PageSize==5 && p.SearchTerm=="test" && p.Descending))).ReturnsAsync(Result<PagedResultDto<ProductSummaryDto>>.Success(paged));
 
-        var expectedResult = Result<PagedResultDto<ProductSummaryDto>>.Success(new PagedResultDto<ProductSummaryDto>
-        {
-            Data = new List<ProductSummaryDto>
-            {
-                new() { Id = 1, Name = "Gaming Laptop", Sku = "LAP-001", Price = 999.99m }
-            },
-            TotalCount = 1,
-            Page = 1,
-            PageSize = 20,
-            TotalPages = 1
-        });
+        var response = await _functions.GetPagedAsync(request);
 
-        _mockProductService.Setup(s => s.GetPagedAsync(It.IsAny<PaginationRequestDto>()))
-            .ReturnsAsync(expectedResult);
-
-        // Act
-        var result = await _mockProductService.Object.GetPagedAsync(request);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeTrue();
-        result.Data!.Data.Should().HaveCount(1);
-        result.Data.Data.First().Name.Should().Be("Gaming Laptop");
-        _mockProductService.Verify(s => s.GetPagedAsync(It.IsAny<PaginationRequestDto>()), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await ReadBodyAsync(response);
+        body.Should().Contain("\"page\":2");
+        _serviceMock.VerifyAll();
     }
-
-    [Fact]
-    public async Task PaginationValidator_ValidRequest_PassesValidation()
-    {
-        // Arrange
-        var validRequest = new PaginationRequestDto
-        {
-            Page = 1,
-            PageSize = 20,
-            MinPrice = 10,
-            MaxPrice = 100
-        };
-
-        // Act
-        var result = await _paginationValidator.ValidateAsync(validRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeTrue();
-        result.Errors.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task PaginationValidator_InvalidPage_FailsValidation()
-    {
-        // Arrange
-        var invalidRequest = new PaginationRequestDto
-        {
-            Page = 0, // Invalid
-            PageSize = 20
-        };
-
-        // Act
-        var result = await _paginationValidator.ValidateAsync(invalidRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().NotBeEmpty();
-        result.Errors.Should().Contain(e => e.PropertyName == "Page");
-    }
-
-    [Fact]
-    public async Task PaginationValidator_InvalidPageSize_FailsValidation()
-    {
-        // Arrange
-        var invalidRequest = new PaginationRequestDto
-        {
-            Page = 1,
-            PageSize = 101 // Invalid - too large
-        };
-
-        // Act
-        var result = await _paginationValidator.ValidateAsync(invalidRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().NotBeEmpty();
-        result.Errors.Should().Contain(e => e.PropertyName == "PageSize");
-    }
-
     #endregion
 
-    #region Create Product Tests
-
+    #region CreateAsync
     [Fact]
-    public async Task ProductService_CreateAsync_ValidProduct_ReturnsCreatedProduct()
+    public async Task CreateAsync_ValidRequest_ReturnsCreated()
     {
-        // Arrange
-        var createRequest = new CreateProductRequestDto
+        var create = new CreateProductRequestDto
         {
-            Name = "New Gaming Laptop",
-            Sku = "LAP-002",
-            Price = 1299.99m,
-            Description = "High-performance gaming laptop",
-            Brand = "TechBrand",
-            Model = "Gaming Pro",
-            Category = "Electronics"
+            Name = "New Product",
+            Model = "M1",
+            Brand = "B1",
+            Sku = "SKU1",
+            Price = 10,
+            Category = "Cat"
         };
+        var json = System.Text.Json.JsonSerializer.Serialize(create);
+        var request = new TestHttpRequestData(_context, method: "POST", body: json, url: "https://localhost/products");
+        var product = CreateProduct(10);
+        _serviceMock.Setup(s => s.CreateAsync(It.Is<CreateProductRequestDto>(c => c.Name==create.Name))).ReturnsAsync(Result<ProductResponseDto>.Success(product));
 
-        var expectedResult = Result<ProductResponseDto>.Success(new ProductResponseDto
-        {
-            Id = 1,
-            Name = createRequest.Name,
-            Sku = createRequest.Sku,
-            Price = createRequest.Price,
-            Description = createRequest.Description,
-            Brand = createRequest.Brand,
-            Model = createRequest.Model,
-            Category = createRequest.Category
-        });
+        var response = await _functions.CreateAsync(request);
 
-        _mockProductService.Setup(s => s.CreateAsync(It.IsAny<CreateProductRequestDto>()))
-            .ReturnsAsync(expectedResult);
-
-        // Act
-        var result = await _mockProductService.Object.CreateAsync(createRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeTrue();
-        result.Data!.Name.Should().Be(createRequest.Name);
-        result.Data.Sku.Should().Be(createRequest.Sku);
-        result.Data.Price.Should().Be(createRequest.Price);
-        _mockProductService.Verify(s => s.CreateAsync(It.IsAny<CreateProductRequestDto>()), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await ReadBodyAsync(response);
+        body.Should().Contain("\"id\":10");
     }
 
     [Fact]
-    public async Task CreateProductValidator_ValidProduct_PassesValidation()
+    public async Task CreateAsync_ServiceFailure_ReturnsBadRequest()
     {
-        // Arrange
-        var validRequest = new CreateProductRequestDto
-        {
-            Name = "Valid Product",
-            Sku = "VALID-001",
-            Price = 29.99m,
-            Description = "A valid product",
-            Brand = "TestBrand",
-            Model = "TestModel",
-            Category = "TestCategory"
-        };
+        var create = new CreateProductRequestDto { Name = "Bad Product" };
+        var json = System.Text.Json.JsonSerializer.Serialize(create);
+        var request = new TestHttpRequestData(_context, method: "POST", body: json);
+        _serviceMock.Setup(s => s.CreateAsync(It.IsAny<CreateProductRequestDto>()))
+            .ReturnsAsync(Result<ProductResponseDto>.Failure("validation failed: name"));
 
-        // Act
-        var result = await _createValidator.ValidateAsync(validRequest);
+        var response = await _functions.CreateAsync(request);
 
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeTrue();
-        result.Errors.Should().BeEmpty();
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ReadBodyAsync(response)).Should().Contain("validation failed");
     }
-
-    [Fact]
-    public async Task CreateProductValidator_InvalidName_FailsValidation()
-    {
-        // Arrange
-        var invalidRequest = new CreateProductRequestDto
-        {
-            Name = "", // Invalid - empty
-            Sku = "VALID-001",
-            Price = 29.99m
-        };
-
-        // Act
-        var result = await _createValidator.ValidateAsync(invalidRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().NotBeEmpty();
-        result.Errors.Should().Contain(e => e.PropertyName == "Name");
-    }
-
-    [Fact]
-    public async Task CreateProductValidator_InvalidPrice_FailsValidation()
-    {
-        // Arrange
-        var invalidRequest = new CreateProductRequestDto
-        {
-            Name = "Valid Product",
-            Sku = "VALID-001",
-            Price = -10 // Invalid - negative
-        };
-
-        // Act
-        var result = await _createValidator.ValidateAsync(invalidRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().NotBeEmpty();
-        result.Errors.Should().Contain(e => e.PropertyName == "Price");
-    }
-
     #endregion
 
-    #region Update Product Tests
-
+    #region UpdateAsync
     [Fact]
-    public async Task ProductService_UpdateAsync_ValidUpdate_ReturnsUpdatedProduct()
+    public async Task UpdateAsync_InvalidId_ReturnsBadRequest()
     {
-        // Arrange
-        var productId = 1;
-        var updateRequest = new UpdateProductRequestDto
-        {
-            Name = "Updated Gaming Laptop",
-            Price = 1399.99m,
-            Description = "Updated high-performance gaming laptop"
-        };
+        var request = new TestHttpRequestData(_context, method: "PUT");
 
-        var expectedResult = Result<ProductResponseDto>.Success(new ProductResponseDto
-        {
-            Id = productId,
-            Name = updateRequest.Name,
-            Sku = "LAP-001",
-            Price = updateRequest.Price,
-            Description = updateRequest.Description
-        });
+        var response = await _functions.UpdateAsync(request, 0);
 
-        _mockProductService.Setup(s => s.UpdateAsync(productId, It.IsAny<UpdateProductRequestDto>()))
-            .ReturnsAsync(expectedResult);
-
-        // Act
-        var result = await _mockProductService.Object.UpdateAsync(productId, updateRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeTrue();
-        result.Data!.Id.Should().Be(productId);
-        result.Data.Name.Should().Be(updateRequest.Name);
-        result.Data.Price.Should().Be(updateRequest.Price);
-        _mockProductService.Verify(s => s.UpdateAsync(productId, It.IsAny<UpdateProductRequestDto>()), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ReadBodyAsync(response)).Should().Contain("greater than 0");
     }
 
     [Fact]
-    public async Task UpdateProductValidator_ValidUpdate_PassesValidation()
+    public async Task UpdateAsync_ValidRequest_ReturnsOk()
     {
-        // Arrange
-        var validRequest = new UpdateProductRequestDto
+        var update = new UpdateProductRequestDto
         {
-            Name = "Updated Product Name",
-            Model = "Updated Model",
-            Brand = "Updated Brand",
-            Sku = "UPD-001",
-            Price = 39.99m,
-            Description = "Updated description"
+            Name="Updated", Model="M", Brand="B", Sku="S", Price=20
         };
+        var json = System.Text.Json.JsonSerializer.Serialize(update);
+        var request = new TestHttpRequestData(_context, method: "PUT", body: json);
+        var product = CreateProduct(5) with { Name = "Updated" };
+        _serviceMock.Setup(s => s.UpdateAsync(5, It.IsAny<UpdateProductRequestDto>())).ReturnsAsync(Result<ProductResponseDto>.Success(product));
 
-        // Act
-        var result = await _updateValidator.ValidateAsync(validRequest);
+        var response = await _functions.UpdateAsync(request, 5);
 
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeTrue();
-        result.Errors.Should().BeEmpty();
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadBodyAsync(response)).Should().Contain("Updated");
     }
-
-    [Fact]
-    public async Task UpdateProductValidator_InvalidPrice_FailsValidation()
-    {
-        // Arrange
-        var invalidRequest = new UpdateProductRequestDto
-        {
-            Name = "Valid Name",
-            Price = -5 // Invalid - negative
-        };
-
-        // Act
-        var result = await _updateValidator.ValidateAsync(invalidRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().NotBeEmpty();
-        result.Errors.Should().Contain(e => e.PropertyName == "Price");
-    }
-
-    [Fact]
-    public async Task ProductService_UpdateAsync_ProductNotFound_ReturnsFailure()
-    {
-        // Arrange
-        var productId = 999;
-        var updateRequest = new UpdateProductRequestDto
-        {
-            Name = "Updated Product",
-            Price = 25.99m
-        };
-
-        var expectedResult = Result<ProductResponseDto>.Failure("Product not found");
-
-        _mockProductService.Setup(s => s.UpdateAsync(productId, It.IsAny<UpdateProductRequestDto>()))
-            .ReturnsAsync(expectedResult);
-
-        // Act
-        var result = await _mockProductService.Object.UpdateAsync(productId, updateRequest);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Product not found");
-        _mockProductService.Verify(s => s.UpdateAsync(productId, It.IsAny<UpdateProductRequestDto>()), Times.Once);
-    }
-
     #endregion
 
-    #region Delete Product Tests
-
+    #region DeleteAsync
     [Fact]
-    public async Task ProductService_DeleteAsync_ValidId_ReturnsSuccess()
+    public async Task DeleteAsync_InvalidId_ReturnsBadRequest()
     {
-        // Arrange
-        var productId = 1;
-        var expectedResult = Result.Success();
-
-        _mockProductService.Setup(s => s.DeleteAsync(productId))
-            .ReturnsAsync(expectedResult);
-
-        // Act
-        var result = await _mockProductService.Object.DeleteAsync(productId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeTrue();
-        _mockProductService.Verify(s => s.DeleteAsync(productId), Times.Once);
+        var request = new TestHttpRequestData(_context, method: "DELETE");
+        var response = await _functions.DeleteAsync(request, -1);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task ProductService_DeleteAsync_InvalidId_ReturnsFailure()
+    public async Task DeleteAsync_Success_ReturnsOk()
     {
-        // Arrange
-        var productId = 999;
-        var expectedResult = Result.Failure("Product not found");
+        var request = new TestHttpRequestData(_context, method: "DELETE");
+        _serviceMock.Setup(s => s.DeleteAsync(3)).ReturnsAsync(Result.Success());
 
-        _mockProductService.Setup(s => s.DeleteAsync(productId))
-            .ReturnsAsync(expectedResult);
+        var response = await _functions.DeleteAsync(request, 3);
 
-        // Act
-        var result = await _mockProductService.Object.DeleteAsync(productId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Product not found");
-        _mockProductService.Verify(s => s.DeleteAsync(productId), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
-
-    [Fact]
-    public async Task ProductService_DeleteAsync_ServiceException_ThrowsException()
-    {
-        // Arrange
-        var productId = 1;
-        _mockProductService.Setup(s => s.DeleteAsync(productId))
-            .ThrowsAsync(new InvalidOperationException("Database connection failed"));
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _mockProductService.Object.DeleteAsync(productId));
-        
-        _mockProductService.Verify(s => s.DeleteAsync(productId), Times.Once);
-    }
-
     #endregion
 
-    #region Seed Products Tests
-
+    #region SeedAsync
     [Fact]
-    public async Task ProductService_SeedAsync_DefaultCount_ReturnsSeededProducts()
+    public async Task SeedAsync_InvalidCount_ReturnsBadRequest()
     {
-        // Arrange
-        var defaultCount = 100;
-        var seededProducts = new List<ProductResponseDto>
-        {
-            new() { Id = 1, Name = "Seeded Gaming Laptop", Sku = "SEED-001", Price = 999.99m },
-            new() { Id = 2, Name = "Seeded Office Mouse", Sku = "SEED-002", Price = 29.99m }
-        };
-
-        var expectedResult = Result<List<ProductResponseDto>>.Success(seededProducts);
-
-        _mockProductService.Setup(s => s.SeedAsync(defaultCount))
-            .ReturnsAsync(expectedResult);
-
-        // Act
-        var result = await _mockProductService.Object.SeedAsync(defaultCount);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeTrue();
-        result.Data.Should().HaveCount(2);
-        result.Data!.Should().Contain(p => p.Name == "Seeded Gaming Laptop");
-        _mockProductService.Verify(s => s.SeedAsync(defaultCount), Times.Once);
+        var request = new TestHttpRequestData(_context, method: "POST");
+        var response = await _functions.SeedAsync(request, 0);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task ProductService_SeedAsync_CustomCount_ReturnsSpecifiedCount()
+    public async Task SeedAsync_Success_ReturnsOkWithCount()
     {
-        // Arrange
-        var customCount = 25;
-        var seededProducts = Enumerable.Range(1, customCount)
-            .Select(i => new ProductResponseDto
-            {
-                Id = i,
-                Name = $"Seeded Product {i}",
-                Sku = $"SEED-{i:D3}",
-                Price = 10.99m + i
-            }).ToList();
+        var request = new TestHttpRequestData(_context, method: "POST");
+        var products = new List<ProductResponseDto> { CreateProduct(1), CreateProduct(2) };
+        _serviceMock.Setup(s => s.SeedAsync(2)).ReturnsAsync(Result<List<ProductResponseDto>>.Success(products));
 
-        var expectedResult = Result<List<ProductResponseDto>>.Success(seededProducts);
+        var response = await _functions.SeedAsync(request, 2);
 
-        _mockProductService.Setup(s => s.SeedAsync(customCount))
-            .ReturnsAsync(expectedResult);
-
-        // Act
-        var result = await _mockProductService.Object.SeedAsync(customCount);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeTrue();
-        result.Data.Should().HaveCount(customCount);
-        _mockProductService.Verify(s => s.SeedAsync(customCount), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadBodyAsync(response)).Should().Contain("\"count\":2");
     }
 
     [Fact]
-    public async Task ProductService_SeedAsync_InvalidCount_ReturnsFailure()
+    public async Task SeedAsync_Failure_ReturnsBadRequest()
     {
-        // Arrange
-        var invalidCount = -5;
-        var expectedResult = Result<List<ProductResponseDto>>.Failure("Count must be between 1 and 10,000");
+        var request = new TestHttpRequestData(_context, method: "POST");
+        _serviceMock.Setup(s => s.SeedAsync(5)).ReturnsAsync(Result<List<ProductResponseDto>>.Failure("seeding failed"));
 
-        _mockProductService.Setup(s => s.SeedAsync(invalidCount))
-            .ReturnsAsync(expectedResult);
+        var response = await _functions.SeedAsync(request, 5);
 
-        // Act
-        var result = await _mockProductService.Object.SeedAsync(invalidCount);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Count must be between");
-        _mockProductService.Verify(s => s.SeedAsync(invalidCount), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ReadBodyAsync(response)).Should().Contain("seeding failed");
     }
-
-    [Fact]
-    public async Task ProductService_SeedAsync_ServiceException_ThrowsException()
-    {
-        // Arrange
-        var count = 100;
-        _mockProductService.Setup(s => s.SeedAsync(count))
-            .ThrowsAsync(new InvalidOperationException("Database seeding failed"));
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _mockProductService.Object.SeedAsync(count));
-        
-        _mockProductService.Verify(s => s.SeedAsync(count), Times.Once);
-    }
-
     #endregion
+
+    private static async Task<string> ReadBodyAsync(HttpResponseData response)
+    {
+        response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(response.Body, leaveOpen: true);
+        return await reader.ReadToEndAsync();
+    }
 }

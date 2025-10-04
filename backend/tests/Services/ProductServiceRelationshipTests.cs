@@ -5,6 +5,7 @@ using ProductManagement.services;
 using ProductManagement.infrastructure.repositories;
 using ProductManagement.dtos;
 using ProductManagement.entities;
+using ProductManagement.validators;
 
 namespace ProductManagement.Tests.Services;
 
@@ -15,13 +16,24 @@ public class ProductServiceRelationshipTests
 {
     private readonly Mock<IProductRepository> _mockProductRepository;
     private readonly Mock<ILogger<ProductService>> _mockLogger;
+    private readonly Mock<CreateProductRequestValidator> _mockCreateValidator;
+    private readonly Mock<UpdateProductRequestValidator> _mockUpdateValidator;
+    private readonly Mock<PaginationRequestValidator> _mockPaginationValidator;
     private readonly ProductService _productService;
 
     public ProductServiceRelationshipTests()
     {
         _mockProductRepository = new Mock<IProductRepository>();
         _mockLogger = new Mock<ILogger<ProductService>>();
-        _productService = new ProductService(_mockProductRepository.Object, _mockLogger.Object);
+        _mockCreateValidator = new Mock<CreateProductRequestValidator>();
+        _mockUpdateValidator = new Mock<UpdateProductRequestValidator>();
+        _mockPaginationValidator = new Mock<PaginationRequestValidator>();
+        _productService = new ProductService(
+            _mockProductRepository.Object, 
+            _mockLogger.Object,
+            _mockCreateValidator.Object,
+            _mockUpdateValidator.Object,
+            _mockPaginationValidator.Object);
     }
 
     [Fact]

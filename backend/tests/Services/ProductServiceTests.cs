@@ -6,6 +6,7 @@ using ProductManagement.infrastructure.repositories;
 using ProductManagement.dtos;
 using ProductManagement.entities;
 using ProductManagement.validators;
+using FluentValidation.Results;
 
 namespace ProductManagement.Tests.Services;
 
@@ -13,24 +14,24 @@ public class ProductServiceTests
 {
     private readonly Mock<IProductRepository> _mockProductRepository;
     private readonly Mock<ILogger<ProductService>> _mockLogger;
-    private readonly Mock<CreateProductRequestValidator> _mockCreateValidator;
-    private readonly Mock<UpdateProductRequestValidator> _mockUpdateValidator;
-    private readonly Mock<PaginationRequestValidator> _mockPaginationValidator;
+    private readonly CreateProductRequestValidator _createValidator;
+    private readonly UpdateProductRequestValidator _updateValidator;
+    private readonly PaginationRequestValidator _paginationValidator;
     private readonly ProductService _productService;
 
     public ProductServiceTests()
     {
         _mockProductRepository = new Mock<IProductRepository>();
         _mockLogger = new Mock<ILogger<ProductService>>();
-        _mockCreateValidator = new Mock<CreateProductRequestValidator>();
-        _mockUpdateValidator = new Mock<UpdateProductRequestValidator>();
-        _mockPaginationValidator = new Mock<PaginationRequestValidator>();
+        _createValidator = new CreateProductRequestValidator();
+        _updateValidator = new UpdateProductRequestValidator();
+        _paginationValidator = new PaginationRequestValidator();
         _productService = new ProductService(
             _mockProductRepository.Object, 
             _mockLogger.Object,
-            _mockCreateValidator.Object,
-            _mockUpdateValidator.Object,
-            _mockPaginationValidator.Object);
+            _createValidator,
+            _updateValidator,
+            _paginationValidator);
     }
 
     [Fact]
@@ -224,8 +225,11 @@ public class ProductServiceTests
         var createRequest = new CreateProductRequestDto
         {
             Name = "New Product",
+            Model = "Model1",
+            Brand = "Brand1",
             Sku = "EXISTING_SKU",
-            Price = 100.00m
+            Price = 100.00m,
+            Category = "Electronics"
         };
 
         _mockProductRepository
@@ -319,8 +323,11 @@ public class ProductServiceTests
         var updateRequest = new UpdateProductRequestDto
         {
             Name = "Updated Product",
+            Model = "UpdatedModel",
+            Brand = "UpdatedBrand",
             Sku = "UPDATED_SKU",
-            Price = 200.00m
+            Price = 200.00m,
+            Category = "UpdatedCat"
         };
 
         _mockProductRepository

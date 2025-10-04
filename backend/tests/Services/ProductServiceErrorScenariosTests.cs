@@ -6,6 +6,7 @@ using ProductManagement.infrastructure.repositories;
 using ProductManagement.dtos;
 using ProductManagement.entities;
 using ProductManagement.validators;
+using FluentValidation.Results;
 
 namespace ProductManagement.Tests.Services;
 
@@ -16,24 +17,24 @@ public class ProductServiceErrorScenariosTests
 {
     private readonly Mock<IProductRepository> _mockProductRepository;
     private readonly Mock<ILogger<ProductService>> _mockLogger;
-    private readonly Mock<CreateProductRequestValidator> _mockCreateValidator;
-    private readonly Mock<UpdateProductRequestValidator> _mockUpdateValidator;
-    private readonly Mock<PaginationRequestValidator> _mockPaginationValidator;
+    private readonly CreateProductRequestValidator _createValidator;
+    private readonly UpdateProductRequestValidator _updateValidator;
+    private readonly PaginationRequestValidator _paginationValidator;
     private readonly ProductService _productService;
 
     public ProductServiceErrorScenariosTests()
     {
         _mockProductRepository = new Mock<IProductRepository>();
         _mockLogger = new Mock<ILogger<ProductService>>();
-        _mockCreateValidator = new Mock<CreateProductRequestValidator>();
-        _mockUpdateValidator = new Mock<UpdateProductRequestValidator>();
-        _mockPaginationValidator = new Mock<PaginationRequestValidator>();
+        _createValidator = new CreateProductRequestValidator();
+        _updateValidator = new UpdateProductRequestValidator();
+        _paginationValidator = new PaginationRequestValidator();
         _productService = new ProductService(
             _mockProductRepository.Object, 
             _mockLogger.Object,
-            _mockCreateValidator.Object,
-            _mockUpdateValidator.Object,
-            _mockPaginationValidator.Object);
+            _createValidator,
+            _updateValidator,
+            _paginationValidator);
     }
 
     [Fact]
@@ -101,6 +102,7 @@ public class ProductServiceErrorScenariosTests
         var createRequest = new CreateProductRequestDto
         {
             Name = "Test Product",
+            Model = "ModelA",
             Sku = "DUPLICATE-SKU",
             Price = 100m,
             Brand = "TestBrand",
@@ -130,6 +132,7 @@ public class ProductServiceErrorScenariosTests
         var createRequest = new CreateProductRequestDto
         {
             Name = "Test Product",
+            Model = "ModelA",
             Sku = "NEW-SKU",
             Price = 100m,
             Brand = "TestBrand",
@@ -174,6 +177,7 @@ public class ProductServiceErrorScenariosTests
         var updateRequest = new UpdateProductRequestDto
         {
             Name = "Updated Product",
+            Model = "UpdatedModel",
             Sku = "UPDATED-SKU",
             Price = 150m,
             Brand = "UpdatedBrand",
@@ -204,6 +208,7 @@ public class ProductServiceErrorScenariosTests
         var updateRequest = new UpdateProductRequestDto
         {
             Name = "Updated Product",
+            Model = "UpdatedModel",
             Sku = "DUPLICATE-SKU",
             Price = 150m,
             Brand = "UpdatedBrand",
@@ -240,6 +245,7 @@ public class ProductServiceErrorScenariosTests
         var updateRequest = new UpdateProductRequestDto
         {
             Name = "Updated Product",
+            Model = "UpdatedModel",
             Sku = "UPDATED-SKU",
             Price = 150m,
             Brand = "UpdatedBrand",

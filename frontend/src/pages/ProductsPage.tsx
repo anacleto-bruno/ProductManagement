@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useEffect } from 'react'
 import { 
   Typography, 
   Paper, 
@@ -25,6 +25,7 @@ import { useProductTableState } from '~/hooks/useProductTableState'
 export const ProductsPage: React.FC = () => {
   const { t } = useTranslation('products')
   const { t: tCommon } = useTranslation('common')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Table state management
   const {
@@ -39,6 +40,19 @@ export const ProductsPage: React.FC = () => {
   } = useProductTableState({
     initialPageSize: 20,
   })
+
+  // Keyboard shortcut for search focus (Ctrl+K / Cmd+K)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+        event.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Fetch products data
   const {
@@ -106,9 +120,16 @@ export const ProductsPage: React.FC = () => {
         <Box display="flex" gap={2} alignItems="center">
           <TextField
             fullWidth
-            placeholder={t('searchPlaceholder')}
+            inputRef={searchInputRef}
+            placeholder={`${t('searchPlaceholder')} (Ctrl+K)`}
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                clearSearch()
+                searchInputRef.current?.blur()
+              }
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -136,13 +157,21 @@ export const ProductsPage: React.FC = () => {
         </Box>
 
         {hasSearch && (
-          <Box mt={2}>
+          <Box mt={2} display="flex" gap={1} alignItems="center">
             <Chip
               label={`${tCommon('search')}: "${search}"`}
               onDelete={clearSearch}
               variant="outlined"
               color="primary"
             />
+            {!isSearching && !error && (
+              <Chip
+                label={`${pagination.totalCount} ${pagination.totalCount === 1 ? 'result' : 'results'}`}
+                variant="filled"
+                color={pagination.totalCount > 0 ? 'success' : 'default'}
+                size="small"
+              />
+            )}
           </Box>
         )}
       </Paper>
@@ -182,7 +211,7 @@ export const ProductsPage: React.FC = () => {
         </>
       )}
 
-      {/* Empty State */}
+      {/* Empty State - No Products */}
       {!isLoading && !error && products.length === 0 && !hasSearch && (
         <Paper sx={{ p: 6, textAlign: 'center' }}>
           <Typography variant="h6" gutterBottom>
@@ -206,6 +235,35 @@ export const ProductsPage: React.FC = () => {
               onClick={() => console.log('Add product - Epic 8')}
             >
               {t('addProduct')}
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Empty State - No Search Results */}
+      {!isLoading && !error && products.length === 0 && hasSearch && (
+        <Paper sx={{ p: 6, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>
+            No results found for "{search}"
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Try adjusting your search criteria or browse all products.
+          </Typography>
+          <Box display="flex" gap={2} justifyContent="center">
+            <Button
+              variant="outlined"
+              onClick={clearSearch}
+              startIcon={<ClearIcon />}
+            >
+              {tCommon('clear')} {tCommon('search')}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<SeedIcon />}
+              onClick={handleSeedProducts}
+              disabled={seedProductsMutation.isPending}
+            >
+              {t('seedData')}
             </Button>
           </Box>
         </Paper>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <!-- Include everything from the main assembly -->
+          <Include>
+            [ProductManagement]*
+          </Include>
+          <!-- Exclude auto-generated / infrastructure / EF migrations / build artifacts -->
+          <ExcludeByFile>**/Migrations/*;**/*Designer.cs;**/Generated/*;**/obj/**/*;**/bin/**/*</ExcludeByFile>
+          <!-- Explicit class exclusions (auto-generated Azure Functions / worker bootstrap code) -->
+          <Exclude>
+            [ProductManagement]ProductManagement.DirectFunctionExecutor
+            [ProductManagement]ProductManagement.FunctionExecutorAutoStartup
+            [ProductManagement]ProductManagement.FunctionExecutorHostBuilderExtensions
+            [ProductManagement]ProductManagement.FunctionMetadataProviderAutoStartup
+            [ProductManagement]ProductManagement.GeneratedFunctionMetadataProvider
+            [ProductManagement]ProductManagement.WorkerExtensionStartupCodeExecutor
+            [ProductManagement]ProductManagement.WorkerHostBuilderFunctionMetadataProviderExtension
+          </Exclude>
+          <!-- Exclude by attribute to future-proof generated code removal -->
+          <ExcludeByAttribute>GeneratedCodeAttribute;CompilerGeneratedAttribute;ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <!-- Treat these as fully covered (optional). Commented out for now. -->
+          <!--<UseSourceLink>true</UseSourceLink>-->
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

@@ -7,9 +7,10 @@ using ProductManagement.dtos;
 using ProductManagement.entities;
 using ProductManagement.validators;
 using FluentValidation.Results;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ProductManagement.Tests.Services;
-
+[ExcludeFromCodeCoverage]
 public class ProductServiceTests
 {
     private readonly Mock<IProductRepository> _mockProductRepository;

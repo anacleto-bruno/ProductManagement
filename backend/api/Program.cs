@@ -12,16 +12,14 @@ using ProductManagement.services;
 using ProductManagement.services.caching;
 using ProductManagement.services.decorators;
 using ProductManagement.validators;
-using ProductManagement.middleware;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWorkerDefaults(builder =>
-    {
-        builder.UseMiddleware<ErrorHandlingMiddleware>();
-    })
+    // Using default Functions Worker setup; custom error handling middleware removed.
+    .ConfigureFunctionsWorkerDefaults()
     .ConfigureServices((context, services) =>
     {
         // Configure Application Insights

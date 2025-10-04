@@ -22,7 +22,8 @@ dotnet test ProductManagement.UnitTests.csproj `
     --collect:"XPlat Code Coverage" `
     --results-directory $coverageDir `
     --logger "console;verbosity=normal" `
-    --configuration Release
+    --configuration Release `
+    --settings code-coverage.runsettings
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Tests failed!" -ForegroundColor Red
@@ -49,7 +50,9 @@ reportgenerator `
     -reporttypes:"Html;HtmlSummary;Badges" `
     -sourcedirs:"..\api" `
     -filefilters:"-**/Migrations/**" `
-    -title:"Product Management API - Test Coverage"
+    -assemblyfilters:"+ProductManagement" `
+    -classfilters:"-ProductManagement.DirectFunctionExecutor;-ProductManagement.FunctionExecutorAutoStartup;-ProductManagement.FunctionExecutorHostBuilderExtensions;-ProductManagement.FunctionMetadataProviderAutoStartup;-ProductManagement.GeneratedFunctionMetadataProvider;-ProductManagement.WorkerExtensionStartupCodeExecutor;-ProductManagement.WorkerHostBuilderFunctionMetadataProviderExtension" `
+    -title:"Product Management API - Test Coverage (Excluding Auto-Generated Code)"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to generate HTML report!" -ForegroundColor Red

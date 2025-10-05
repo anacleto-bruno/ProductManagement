@@ -73,7 +73,7 @@ export const useProductTableState = (options: UseProductTableStateOptions = {}) 
     }
 
     if (debouncedSearch.trim()) {
-      params.search = debouncedSearch.trim()
+      params.searchTerm = debouncedSearch.trim()
     }
 
     return params

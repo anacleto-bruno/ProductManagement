@@ -42,7 +42,7 @@ export type ProductListResponse = z.infer<typeof ProductListResponseSchema>
 
 // Search and filter types
 export interface ProductFilters {
-  search?: string
+  searchTerm?: string
   brand?: string
   minPrice?: number
   maxPrice?: number

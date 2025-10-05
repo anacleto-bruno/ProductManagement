@@ -10,9 +10,7 @@ import {
   Box 
 } from '@mui/material'
 import { 
-  Dashboard, 
-  Inventory, 
-  Settings 
+  Inventory
 } from '@mui/icons-material'
 import { useAppStore } from '~/states/appStore'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -31,9 +29,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation()
 
   const menuItems = [
-    { text: 'Dashboard', icon: Dashboard, path: '/' },
-    { text: 'Products', icon: Inventory, path: '/products' },
-    { text: 'Settings', icon: Settings, path: '/settings' },
+    { text: 'Products', icon: Inventory, path: '/' },
   ]
 
   const handleItemClick = (path: string) => {
@@ -61,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
-              selected={location.pathname === item.path}
+              selected={location.pathname === item.path || (item.path === '/' && location.pathname === '/products')}
               onClick={() => handleItemClick(item.path)}
             >
               <ListItemIcon>

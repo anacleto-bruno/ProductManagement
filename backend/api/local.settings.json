@@ -8,5 +8,9 @@
     "FeatureFlags__EnableAdvancedLogging": "true",
     "Cache__DefaultTtl": "00:05:00",
     "Cache__Enabled": "true"
+  },
+  "Host": {
+    "CORS": "*",
+    "CORSCredentials": false
   }
 }

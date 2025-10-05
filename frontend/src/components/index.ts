@@ -16,7 +16,6 @@ export {
   ProductTableBody,
   ProductTableRow,
   ProductNameCell,
-  ProductDescriptionCell,
   ProductTextCell,
   ProductPriceCell,
   ProductChipsCell,

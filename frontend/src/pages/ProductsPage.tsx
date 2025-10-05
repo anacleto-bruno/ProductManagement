@@ -32,7 +32,7 @@ export const ProductsPage: React.FC = () => {
   } = useProductsPage()
 
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       <ProductsHeader
         totalCount={pagination.totalCount}
         onSeedProducts={handleSeedProducts}

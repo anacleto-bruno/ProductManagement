@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, Container, Toolbar } from '@mui/material'
+import { Box, Toolbar } from '@mui/material'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import { NotificationProvider } from './NotificationProvider'
@@ -21,12 +21,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           flexGrow: 1,
           bgcolor: 'background.default',
           minHeight: '100vh',
+          minWidth: 0, // Prevents flex shrinking
+          width: '100vw', // Ensures full width
         }}
       >
         <Toolbar /> {/* This creates space for the fixed AppBar */}
-        <Container maxWidth="xl" sx={{ mt: 2, mb: 2 }}>
+        <Box sx={{ 
+          px: 3, 
+          py: 2, 
+          width: '100%',
+          minWidth: '100%' // Ensures content container maintains full width
+        }}>
           {children}
-        </Container>
+        </Box>
       </Box>
       
       <NotificationProvider />

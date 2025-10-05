@@ -74,7 +74,12 @@ export const ProductsContent: React.FC<ProductsContentProps> = ({
 
   // Products Table with Pagination
   return (
-    <>
+    <Box sx={{ 
+      width: '100%',
+      minWidth: '100%', // Prevents shrinking when content is empty
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
       <ProductTable
         products={products}
         loading={isFetching}
@@ -90,6 +95,6 @@ export const ProductsContent: React.FC<ProductsContentProps> = ({
           loading={isFetching}
         />
       )}
-    </>
+    </Box>
   )
 }

@@ -29,8 +29,16 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   }
 
   return (
-    <TableContainer component={Paper} sx={{ mb: 3 }}>
-      <Table stickyHeader={stickyHeader}>
+    <TableContainer component={Paper} sx={{ 
+      mb: 3, 
+      width: '100%',
+      minWidth: '100%', // Prevents shrinking when empty
+      boxSizing: 'border-box'
+    }}>
+      <Table stickyHeader={stickyHeader} sx={{ 
+        width: '100%',
+        minWidth: '100%' // Maintains width when empty
+      }}>
         <ProductTableHeader columns={columns} />
         <ProductTableBody
           products={products}

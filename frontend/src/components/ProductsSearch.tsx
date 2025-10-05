@@ -49,7 +49,13 @@ export const ProductsSearch: React.FC<ProductsSearchProps> = ({
   }, [])
 
   return (
-    <Paper sx={{ p: 3, mb: 3 }}>
+    <Paper sx={{ 
+      p: 3, 
+      mb: 3,
+      width: '100%',
+      minWidth: '100%', // Prevents shrinking
+      boxSizing: 'border-box'
+    }}>
       <Box display="flex" gap={2} alignItems="center">
         <TextField
           fullWidth
@@ -81,7 +87,9 @@ export const ProductsSearch: React.FC<ProductsSearchProps> = ({
                 </Button>
               </InputAdornment>
             ) : null,
+            sx: { width: '100%' } // Ensure input uses full width
           }}
+          sx={{ width: '100%' }} // Ensure TextField uses full width
         />
         
         {isSearching && (

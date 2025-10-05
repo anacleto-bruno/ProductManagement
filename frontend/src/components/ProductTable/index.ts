@@ -3,7 +3,6 @@ export { ProductTableBody } from './ProductTableBody'
 export { ProductTableRow } from './ProductTableRow'
 export { 
   ProductNameCell,
-  ProductDescriptionCell,
   ProductTextCell,
   ProductPriceCell,
   ProductChipsCell,

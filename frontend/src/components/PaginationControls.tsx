@@ -45,6 +45,8 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
         flexWrap: 'wrap',
         gap: 2,
         mt: 2,
+        width: '100%',
+        minWidth: '100%', // Prevents shrinking
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

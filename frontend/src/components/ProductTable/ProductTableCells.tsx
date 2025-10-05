@@ -14,28 +14,6 @@ export const ProductNameCell: React.FC<ProductNameCellProps> = ({ name }) => (
   </TableCell>
 )
 
-interface ProductDescriptionCellProps {
-  description: string | null | undefined
-}
-
-export const ProductDescriptionCell: React.FC<ProductDescriptionCellProps> = ({ description }) => (
-  <TableCell>
-    <Typography 
-      variant="body2" 
-      color="text.secondary"
-      sx={{
-        maxWidth: 200,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}
-      title={description || undefined}
-    >
-      {description || '-'}
-    </Typography>
-  </TableCell>
-)
-
 interface ProductTextCellProps {
   value: string | null | undefined
   fontFamily?: string

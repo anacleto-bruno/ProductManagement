@@ -24,11 +24,20 @@ export const useProductsPage = () => {
 
   // Derived state
   const products = productsQuery.data?.data || []
-  const pagination = productsQuery.data?.pagination || {
+  const pagination = productsQuery.data ? {
+    page: productsQuery.data.page,
+    pageSize: productsQuery.data.pageSize,
+    totalCount: productsQuery.data.totalCount,
+    totalPages: productsQuery.data.totalPages,
+    hasNextPage: productsQuery.data.hasNextPage,
+    hasPreviousPage: productsQuery.data.hasPreviousPage,
+  } : {
     page: 1,
     pageSize: 20,
     totalCount: 0,
     totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false,
   }
 
   return {

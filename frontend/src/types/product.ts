@@ -28,14 +28,21 @@ export const PaginationSchema = z.object({
   pageSize: z.number().min(1).max(100),
   totalCount: z.number(),
   totalPages: z.number(),
+  hasNextPage: z.boolean().optional(),
+  hasPreviousPage: z.boolean().optional(),
 })
 
 export type Pagination = z.infer<typeof PaginationSchema>
 
-// API Response types
+// API Response types - matches backend structure
 export const ProductListResponseSchema = z.object({
   data: z.array(ProductSchema),
-  pagination: PaginationSchema,
+  page: z.number().min(1),
+  pageSize: z.number().min(1).max(100),
+  totalCount: z.number(),
+  totalPages: z.number(),
+  hasNextPage: z.boolean().optional(),
+  hasPreviousPage: z.boolean().optional(),
 })
 
 export type ProductListResponse = z.infer<typeof ProductListResponseSchema>

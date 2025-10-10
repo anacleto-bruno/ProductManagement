@@ -1,16 +1,33 @@
 import { z } from 'zod'
 
+// Color and Size schemas
+export const ColorSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  hexCode: z.string().nullable().optional(),
+})
+
+export const SizeSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  code: z.string().nullable().optional(),
+  sortOrder: z.number().nullable().optional(),
+})
+
+export type Color = z.infer<typeof ColorSchema>
+export type Size = z.infer<typeof SizeSchema>
+
 // Product related schemas and types
 export const ProductSchema = z.object({
-  id: z.string(),
+  id: z.number(),
   name: z.string(),
   description: z.string().optional(),
   model: z.string().optional(),
   brand: z.string().optional(),
   sku: z.string(),
   price: z.number(),
-  colors: z.array(z.string()).optional(),
-  sizes: z.array(z.string()).optional(),
+  colors: z.array(ColorSchema).optional(),
+  sizes: z.array(SizeSchema).optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 })

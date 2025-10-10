@@ -8,6 +8,7 @@ interface ProductTableHeaderProps {
 
 const DEFAULT_COLUMNS = [
   'name',
+  'description',
   'model',
   'brand',
   'sku',

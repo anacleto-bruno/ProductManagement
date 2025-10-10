@@ -6,6 +6,7 @@ import {
   ProductTextCell,
   ProductPriceCell,
   ProductChipsCell,
+  ColorChipsCell,
 } from './ProductTableCells'
 
 interface ProductTableRowProps {
@@ -31,12 +32,13 @@ export const ProductTableRow: React.FC<ProductTableRowProps> = ({
       }}
     >
       <ProductNameCell name={product.name} />
+      <ProductTextCell value={product.description} />
       <ProductTextCell value={product.model} />
       <ProductTextCell value={product.brand} fontWeight={500} />
       <ProductTextCell value={product.sku} fontFamily="monospace" />
       <ProductPriceCell price={product.price} />
-      <ProductChipsCell items={product.colors} />
-      <ProductChipsCell items={product.sizes} />
+      <ColorChipsCell colors={product.colors} />
+      <ProductChipsCell items={product.sizes?.map(s => s.name)} />
     </TableRow>
   )
 }

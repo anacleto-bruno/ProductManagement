@@ -60,6 +60,7 @@ public class ProductRepository : Repository<Product>, IProductRepository
         query = query.OrderByField(request.SortBy, request.Descending);
 
         var products = await query
+            .IncludeRelated()
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(p => new ProductSummaryDto
@@ -70,7 +71,19 @@ public class ProductRepository : Repository<Product>, IProductRepository
                 Brand = p.Brand,
                 Sku = p.Sku,
                 Price = p.Price,
-                Category = p.Category
+                Colors = p.ProductColors.Select(pc => new ColorDto
+                {
+                    Id = pc.Color.Id,
+                    Name = pc.Color.Name,
+                    HexCode = pc.Color.HexCode
+                }).ToList(),
+                Sizes = p.ProductSizes.Select(ps => new SizeDto
+                {
+                    Id = ps.Size.Id,
+                    Name = ps.Size.Name,
+                    Code = ps.Size.Code,
+                    SortOrder = ps.Size.SortOrder
+                }).ToList()
             })
             .ToListAsync();
 

@@ -24,7 +24,8 @@ public record ProductSummaryDto
     public string Brand { get; init; } = string.Empty;
     public string Sku { get; init; } = string.Empty;
     public decimal Price { get; init; }
-    public string? Category { get; init; }
+    public List<ColorDto> Colors { get; init; } = new();
+    public List<SizeDto> Sizes { get; init; } = new();
 }
 
 public record CreateProductRequestDto

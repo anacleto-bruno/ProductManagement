@@ -15,32 +15,7 @@ public class ProductRepository : Repository<Product>, IProductRepository
             .AsNoTracking()
             .Where(p => p.Id == id)
             .IncludeRelated()
-            .Select(p => new ProductResponseDto
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                Model = p.Model,
-                Brand = p.Brand,
-                Sku = p.Sku,
-                Price = p.Price,
-                Category = p.Category,
-                CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt,
-                Colors = p.ProductColors.Select(pc => new ColorDto
-                {
-                    Id = pc.Color.Id,
-                    Name = pc.Color.Name,
-                    HexCode = pc.Color.HexCode
-                }).ToList(),
-                Sizes = p.ProductSizes.Select(ps => new SizeDto
-                {
-                    Id = ps.Size.Id,
-                    Name = ps.Size.Name,
-                    Code = ps.Size.Code,
-                    SortOrder = ps.Size.SortOrder
-                }).ToList()
-            })
+            .Select(MappingExtensions.ToResponseDtoExpression)
             .FirstOrDefaultAsync();
     }
 
@@ -63,28 +38,7 @@ public class ProductRepository : Repository<Product>, IProductRepository
             .IncludeRelated()
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(p => new ProductSummaryDto
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Model = p.Model,
-                Brand = p.Brand,
-                Sku = p.Sku,
-                Price = p.Price,
-                Colors = p.ProductColors.Select(pc => new ColorDto
-                {
-                    Id = pc.Color.Id,
-                    Name = pc.Color.Name,
-                    HexCode = pc.Color.HexCode
-                }).ToList(),
-                Sizes = p.ProductSizes.Select(ps => new SizeDto
-                {
-                    Id = ps.Size.Id,
-                    Name = ps.Size.Name,
-                    Code = ps.Size.Code,
-                    SortOrder = ps.Size.SortOrder
-                }).ToList()
-            })
+            .Select(MappingExtensions.ToSummaryDtoExpression)
             .ToListAsync();
 
         return new PagedResultDto<ProductSummaryDto>

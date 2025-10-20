@@ -10,30 +10,43 @@ public class SizeConfiguration : IEntityTypeConfiguration<Size>
     {
         builder.ToTable("sizes");
         
-        builder.HasKey(x => x.Id);
+        builder.HasKey(s => s.Id);
         
-        builder.Property(x => x.Name)
+        builder.Property(s => s.Name)
             .IsRequired()
             .HasMaxLength(10);
+
+        builder.Property(s => s.Code)
+            .HasMaxLength(10);
             
-        builder.Property(x => x.SortOrder)
+        builder.Property(s => s.SortOrder)
+            .IsRequired();
+
+        builder.Property(s => s.CreatedAt)
             .IsRequired();
             
-        builder.HasIndex(x => x.Name)
+        // Performance indexes
+        builder.HasIndex(s => s.Name)
             .HasDatabaseName("idx_sizes_name");
             
-        builder.HasIndex(x => x.SortOrder)
+        builder.HasIndex(s => s.SortOrder)
             .HasDatabaseName("idx_sizes_sortorder");
 
-        // Seed data directly in EF configuration
+        // Configure relationships
+        builder.HasMany(s => s.ProductSizes)
+            .WithOne(ps => ps.Size)
+            .HasForeignKey(ps => ps.SizeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Seed data
         builder.HasData(
-            new Size { Id = 1, Name = "XS", SortOrder = 1, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Size { Id = 2, Name = "S", SortOrder = 2, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Size { Id = 3, Name = "M", SortOrder = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Size { Id = 4, Name = "L", SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Size { Id = 5, Name = "XL", SortOrder = 5, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Size { Id = 6, Name = "XXL", SortOrder = 6, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new Size { Id = 7, Name = "XXXL", SortOrder = 7, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+            new Size { Id = 1, Name = "XS", Code = "XS", SortOrder = 1, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Size { Id = 2, Name = "S", Code = "S", SortOrder = 2, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Size { Id = 3, Name = "M", Code = "M", SortOrder = 3, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Size { Id = 4, Name = "L", Code = "L", SortOrder = 4, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Size { Id = 5, Name = "XL", Code = "XL", SortOrder = 5, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Size { Id = 6, Name = "XXL", Code = "XXL", SortOrder = 6, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Size { Id = 7, Name = "XXXL", Code = "XXXL", SortOrder = 7, CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
     }
 }

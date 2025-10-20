@@ -10,20 +10,30 @@ public class ColorConfiguration : IEntityTypeConfiguration<Color>
     {
         builder.ToTable("colors");
         
-        builder.HasKey(x => x.Id);
+        builder.HasKey(c => c.Id);
         
-        builder.Property(x => x.Name)
+        builder.Property(c => c.Name)
             .IsRequired()
             .HasMaxLength(50);
             
-        builder.Property(x => x.HexCode)
+        builder.Property(c => c.HexCode)
             .IsRequired()
             .HasMaxLength(7);
+
+        builder.Property(c => c.CreatedAt)
+            .IsRequired();
             
-        builder.HasIndex(x => x.Name)
+        // Performance indexes
+        builder.HasIndex(c => c.Name)
             .HasDatabaseName("idx_colors_name");
 
-        // Seed data directly in EF configuration
+        // Configure relationships
+        builder.HasMany(c => c.ProductColors)
+            .WithOne(pc => pc.Color)
+            .HasForeignKey(pc => pc.ColorId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Seed data
         builder.HasData(
             new Color { Id = 1, Name = "Red", HexCode = "#FF0000", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
             new Color { Id = 2, Name = "Blue", HexCode = "#0000FF", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },

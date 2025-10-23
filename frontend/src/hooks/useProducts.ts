@@ -53,7 +53,7 @@ export const useCreateProduct = () => {
       queryClient.invalidateQueries({ queryKey: ProductQueries.lists() })
       
       // Add the new product to any existing queries
-      queryClient.setQueryData(ProductQueries.detail(newProduct.id), newProduct)
+      queryClient.setQueryData(ProductQueries.detail(String(newProduct.id)), newProduct)
       
       addNotification({
         type: 'success',

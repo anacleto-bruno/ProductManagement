@@ -34,7 +34,7 @@ services:
   # Azure Functions API in Docker
   api:
     build:
-      context: .
+      context: ./backend/api
       dockerfile: Dockerfile
     container_name: productmanagement-api
     ports:
@@ -51,6 +51,19 @@ services:
       - AzureWebJobsStorage=UseDevelopmentStorage=true
       - AzureWebJobsScriptRoot=/home/site/wwwroot
       - AzureFunctionsJobHost__Logging__Console__IsEnabled=true
+
+  # Frontend React Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: productmanagement-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    environment:
+      - VITE_API_BASE_URL=http://localhost:7071
 
 volumes:
   postgres_data:

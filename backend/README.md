@@ -105,19 +105,7 @@ git clone <repository-url>
 cd "Product Management\backend"
 ```
 
-### 2. Start Dependencies with Docker
-```powershell
-# Navigate to API directory
-cd api
-
-# Start PostgreSQL and Redis containers
-docker-compose up -d
-
-# Verify containers are running
-docker-compose ps
-```
-
-### 3. Configure Database
+### 2. Configure Database
 ```powershell
 # Install Entity Framework tools (if not already installed)
 dotnet tool install --global dotnet-ef
@@ -128,7 +116,7 @@ dotnet ef database update --project api
 # Verify database is seeded with sample data
 ```
 
-### 4. Configure Application Settings
+### 3. Configure Application Settings
 Create or update `api/local.settings.json`:
 ```json
 {
@@ -142,7 +130,7 @@ Create or update `api/local.settings.json`:
 }
 ```
 
-### 5. Run the Application
+### 4. Run the Application
 ```powershell
 # Navigate to API directory (if not already there)
 cd api
